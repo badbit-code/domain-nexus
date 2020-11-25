@@ -3,7 +3,6 @@ import sqlite3
 import requests
 import whois
 from bs4 import BeautifulSoup
-from time import sleep
 
 # for use with `brandable` function
 with open('words.json') as f:
