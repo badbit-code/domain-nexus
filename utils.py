@@ -22,7 +22,6 @@ def update_table(column_name):
 			if result:=func(func_arg):
 				cur.execute(f'update {table_name} set {column_name}=(?) where domain_name=(?)',(result,domain_name))
 				conn.commit()
-			sleep(0.03) # delay by 30 ms
 		return inner
 	return outer
 
@@ -56,6 +55,7 @@ def wikipedia(domain_name):
 
 @update_table('archive_count')
 def wayback(domain_name):
+	sleep(0.05) # delay by 30 ms
 	return get_archive_count(f'https://web.archive.org/cdx/search/cdx?url={domain_name}&output=json&fl=statuscode')
 
 @update_table('brandable')
