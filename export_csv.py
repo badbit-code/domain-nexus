@@ -15,7 +15,7 @@ cur=conn.cursor()
 cur.execute('select tbl_name from sqlite_master where type="table"')
 
 today=f'{datetime.today().strftime("%Y-%m-%d")}'
-# today='2020-11-17'
+today='2020-11-17'
 
 godaddy_df=pd.concat(pd.read_sql_query(f'select * from {table_name} where date_added=?',con=conn,params=(today,)) for table_name, *_ in cur)
 conn.close()
@@ -38,6 +38,10 @@ combined_df.available=pd.to_datetime(combined_df.available).dt.strftime('%Y-%m-%
 new_names={'domain_name': 'Domain', 'available': 'Available', 'domain_length': 'Length', 'alexa': 'Alexa', 'archive_count': 'Archive Count', 'brandable': 'Brandable','wiki':'Wiki','date_added': 'Collected'}
 
 combined_df.rename(columns=new_names,inplace=True)
+
+buy='<a class="button" href="https://sedo.com/search/details/?domain={}&origin=export">Buy</a>' # this is a placeholder, later there will be new ones for each new sources
+
+combined_df['Buy']=combined_df.apply(lambda x:buy.format(x.Domain),1)
 
 cols=combined_df.columns.tolist() # column list
 
