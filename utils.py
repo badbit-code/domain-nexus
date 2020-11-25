@@ -34,8 +34,13 @@ def get_wiki_count(url):
 	return len(requests.get(url).json()[1])
 
 def get_archive_count(url):
-	response=requests.get(url).text
-	return int(response.count(','))
+	while True:
+		try:
+			response=requests.get(url).text
+		except requests.exceptions.ConnectionError:
+				pass
+		else:
+			return int(response.count(','))
 
 def get_whois(domain_name):
 	try:
@@ -55,7 +60,6 @@ def wikipedia(domain_name):
 
 @update_table('archive_count')
 def wayback(domain_name):
-	sleep(0.05) # delay by 30 ms
 	return get_archive_count(f'https://web.archive.org/cdx/search/cdx?url={domain_name}&output=json&fl=statuscode')
 
 @update_table('brandable')
