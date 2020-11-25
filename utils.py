@@ -3,6 +3,7 @@ import sqlite3
 import requests
 import whois
 from bs4 import BeautifulSoup
+from time import sleep
 
 # for use with `brandable` function
 with open('words.json') as f:
@@ -21,6 +22,7 @@ def update_table(column_name):
 			if result:=func(func_arg):
 				cur.execute(f'update {table_name} set {column_name}=(?) where domain_name=(?)',(result,domain_name))
 				conn.commit()
+			sleep(0.03) # delay by 30 ms
 		return inner
 	return outer
 
