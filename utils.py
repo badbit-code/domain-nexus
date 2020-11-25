@@ -63,7 +63,7 @@ def wayback(domain_name):
 
 @update_table('brandable')
 def brandable(domain_name):
-	domain,tld=domain_name.split('.')
+	domain,tld=domain_name.split('.',1)
 	return len(domain)<=6 or domain in words or domain.endswith(ends_with) or domain.startswith(starts_with) # db saves this as 1 or 0, cool
 
 def whois_(conn,cur,table_name,domain_name):
