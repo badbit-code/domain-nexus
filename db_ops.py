@@ -1,3 +1,5 @@
+#! /usr/local/bin/python3.9
+
 import sqlite3
 from datetime import datetime
 from functools import partial

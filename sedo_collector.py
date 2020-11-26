@@ -1,3 +1,5 @@
+#! /usr/local/bin/python3.9
+
 from pathlib import Path
 from datetime import datetime
 import requests

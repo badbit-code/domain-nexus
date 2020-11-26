@@ -1,3 +1,5 @@
+#! /usr/local/bin/python3.9
+
 from pathlib import Path
 from ftplib import FTP
 from datetime import datetime
