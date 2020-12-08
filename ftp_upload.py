@@ -3,6 +3,7 @@
 from ftplib import FTP
 from pathlib import Path
 from datetime import datetime
+
 import expired_reports
 import live_reports
 
@@ -15,10 +16,10 @@ def upload(souce_dest):
 	with FTP('ftp.mcdanieltechnologies.com','datamover@tldquery.com','7T5sUnu2dQ$g') as ftp:
 		ftp.cwd('/wp-content/uploads/2020/11/reportfolder')
 		for from_, to_ in souce_dest:
-			# print(from_, to_)
+			print(from_, to_)
 			with open(from_,'rb') as f:
 				print(ftp.storbinary(f'STOR {to_}', f))
 
-source_dest=[(reports/'currentreport.csv', 'current/currentreport.csv'),(file_name:=(history/f'{today}.csv'),file_name.stem),(reports/'premium.csv','premium.csv')]
+source_dest=[(file_name:=(reports/'currentreport.csv'), f'current/{file_name.name}'),(file_name:=(history/f'{today}.csv'),f'history/{file_name.name}'),(file_name:=(reports/'premium.csv'),f'premium/{file_name.name}')]
 
-upload(source_dest)
+upload(source_dest)l
