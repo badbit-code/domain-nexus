@@ -11,8 +11,6 @@ with open('words.json') as f:
 starts_with=('anti', 'de', 'dis', 'em', 'en', 'fore', 'il', 'im', 'in', 'inter', 'ir', 'mid', 'mis', 'non', 'over', 'pre', 're', 'semi', 'sub', 'super', 'trans', 'un', 'under')
 ends_with=('able', 'al', 'ation', 'ative', 'ed', 'en', 'eous', 'er', 'es', 'est', 'ful', 'ial', 'ible', 'ic', 'ing', 'ion', 'ious', 'ition', 'itive', 'ity', 'ive', 'less', 'ly', 'ment', 'ness', 'ous', 's', 'tion', 'y')
 
-# check 4 nested function decorator later
-
 def update_table(column_name):
 	def outer(func):
 		def inner(conn,cur,table_name,domain_name,func_arg=None):
