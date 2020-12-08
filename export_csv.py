@@ -17,7 +17,7 @@ cur=conn.cursor()
 cur.execute('select tbl_name from sqlite_master where type="table"')
 
 today=f'{datetime.today().strftime("%Y-%m-%d")}'
-today='2020-11-17'
+# today='2020-11-17'
 
 godaddy_df=pd.concat(pd.read_sql_query(f'select * from {table_name} where date_added=?',con=conn,params=(today,)) for table_name, *_ in cur)
 conn.close()
@@ -27,7 +27,7 @@ cur=conn.cursor()
 sedo_df=pd.read_sql_query(f'select * from sedo_details where date_added=?',con=conn,params=(today,))
 conn.close()
 
-combined_df=pd.concat((godaddy_df,sedo_df)).drop_duplicates('domain_name')
+combined_df=pd.concat((godaddy_df,sedo_df)).drop_duplicates('domain_name') # combine and remove duplicate rows based on domain_name column
 
 combined_df.alexa.where(combined_df.alexa!=-999, 'NA', inplace=True)
 combined_df.brandable.replace(to_replace={0:'Unknown',1:'Yes'},inplace=True)
@@ -37,7 +37,7 @@ for col in ('com', 'net', 'org', 'io', 'edu', 'gov', 'site', 'biz'):
 
 combined_df.available=pd.to_datetime(combined_df.available).dt.strftime('%Y-%m-%d')
 
-new_names={'domain_name': 'Domain', 'available': 'Available', 'domain_length': 'Length', 'alexa': 'Alexa', 'archive_count': 'Archive Count', 'brandable': 'Brandable','wiki':'Wiki','date_added': 'Collected'}
+new_names={'domain_name': 'Domain', 'available': 'Released', 'domain_length': 'Length', 'alexa': 'Alexa', 'archive_count': 'Archive Count', 'brandable': 'Brandable','wiki':'Wiki','date_added': 'Collected'}
 
 combined_df.rename(columns=new_names,inplace=True)
 
