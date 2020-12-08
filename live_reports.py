@@ -9,8 +9,6 @@ from io import StringIO
 import requests
 import pandas as pd
 
-from upload_ftp import upload
-
 reports=Path('reports')
 
 def archive_count(domain_name):
@@ -51,5 +49,3 @@ for row in csv.reader(file_like,delimiter=';'):
 
 df=pd.DataFrame(res,columns=['Domain Name','Cost','Archive Count', 'SEO Data', 'Buy'])
 df.to_csv(reports/'premium.csv',index=False)
-
-upload([(reports/'premium.csv','premium.csv')])
