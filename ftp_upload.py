@@ -22,4 +22,4 @@ def upload(souce_dest):
 
 source_dest=[(file_name:=(reports/'currentreport.csv'), f'current/{file_name.name}'),(file_name:=(history/f'{today}.csv'),f'history/{file_name.name}'),(file_name:=(reports/'premium.csv'),f'premium/{file_name.name}')]
 
-upload(source_dest)l
+upload(source_dest)
