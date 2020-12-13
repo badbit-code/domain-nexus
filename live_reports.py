@@ -34,15 +34,15 @@ def currency_converter(rate):
 		return ceil(int(amount)*rate)
 	return converter
 
-currency_map={'&#163':currency_converter(1.34), 'EUR':currency_converter(1.21), '$US':lambda x:x}
+currency_map={'&#163':currency_converter(1.34), 'EUR':currency_converter(1.21), '$US':currency_converter(1)}
 
 res=[]
 for row in csv.reader(file_like,delimiter=';'):
 	domain_name, cost, currency = itemgetter(0,3,4)(row)
 	archive_count_=archive_count(domain_name)
 	seo_data_=seo_data(domain_name)
-	currency_=f'${currency_map[currency](cost)}'
-	buy=f'<a class="button" href="https://sedo.com/search/details/?domain={domain_name}&origin=export">Buy</a>' # this is a placeholder, later there will be new ones for every new source
+	currency_=currency_map[currency](cost)
+	buy=f'<a class="button" href="https://sedo.com/search/details/?domain={domain_name}&origin=export" target="_blank">Buy</a>' # this is a placeholder, later there will be new ones for every new source
 
 	res.append((domain_name,currency_,archive_count_,seo_data_, buy))
 

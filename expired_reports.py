@@ -41,7 +41,7 @@ new_names={'domain_name': 'Domain', 'available': 'Released', 'domain_length': 'L
 
 combined_df.rename(columns=new_names,inplace=True)
 
-buy='<a class="button" href="https://sedo.com/search/details/?domain={}&origin=export">Buy</a>' # this is a placeholder, later there will be new ones for every new source
+buy='<a class="button" href="https://sedo.com/search/details/?domain={}&origin=export" target="_blank">Buy</a>' # this is a placeholder, later there will be new ones for every new source
 
 combined_df['Buy']=combined_df.apply(lambda x:buy.format(x.Domain),1)
 

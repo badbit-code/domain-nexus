@@ -10,7 +10,7 @@ import live_reports
 reports=Path('reports')
 history=reports/Path('history')
 
-today=f'{datetime.today().strftime("%Y-%m-%d")}'
+today=datetime.today().strftime("%Y-%m-%d")
 
 def upload(souce_dest):
 	with FTP('ftp.mcdanieltechnologies.com','datamover@tldquery.com','7T5sUnu2dQ$g') as ftp:
@@ -21,5 +21,4 @@ def upload(souce_dest):
 				print(ftp.storbinary(f'STOR {to_}', f))
 
 source_dest=[(file_name:=(reports/'currentreport.csv'), f'current/{file_name.name}'),(file_name:=(history/f'{today}.csv'),f'history/{file_name.name}'),(file_name:=(reports/'premium.csv'),f'premium/{file_name.name}')]
-
 upload(source_dest)
