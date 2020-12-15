@@ -10,7 +10,7 @@ from json import loads
 
 Path('db').mkdir(exist_ok=True)
 
-limiter=200 # set this to None for writing all rows to db
+limiter=None # set this to None for writing all rows to db
 
 create_query='''create table if not exists {}
 (domain_name text primary key, available timestamp, domain_length text,

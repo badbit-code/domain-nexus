@@ -9,7 +9,7 @@ from io import StringIO
 
 Path('db').mkdir(exist_ok=True)
 
-limiter=200 # set this to None for writing all rows to db
+limiter=None # set this to None for writing all rows to db
 
 conn=sqlite3.connect('db/sedo_db.db',detect_types=sqlite3.PARSE_DECLTYPES)
 cur=conn.cursor()
