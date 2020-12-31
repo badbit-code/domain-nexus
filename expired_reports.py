@@ -3,8 +3,9 @@
 import sqlite3
 from datetime import datetime, timedelta
 import pandas as pd
-import numpy as np
 from pathlib import Path
+
+import whois
 
 reports=Path('reports')
 history=reports/Path('history')
