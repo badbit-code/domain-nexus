@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
 
-# import godaddy_collector
-# import sedo_collector
-# import db_ops
+import godaddy_collector
+import sedo_collector
+import db_ops
 
 
 reports=Path('reports')
