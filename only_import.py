@@ -8,8 +8,10 @@ import pandas as pd
 
 import godaddy_collector
 import sedo_collector
-import db_ops
 
+print('db ops started')
+import db_ops
+print('db ops stopped')
 
 reports=Path('reports')
 history=reports/Path('history')
