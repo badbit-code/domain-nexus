@@ -19,7 +19,7 @@ history=reports/Path('history')
 history.mkdir(parents=True,exist_ok=True)
 
 today=f'{datetime.today().strftime("%Y-%m-%d")}'
-# today='2020-11-17'
+today='2020-11-17'
 
 with contextlib.closing(sqlite3.connect('db/godaddy_db.db')) as conn:
 	cur=conn.cursor()
