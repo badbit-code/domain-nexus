@@ -23,6 +23,7 @@ org integer default 0, io integer default 0,
 edu integer default 0, gov integer default 0,
 site integer default 0, biz integer default 0,
 brandable integer default 0,
+creation_date timestamp NULL,
 date_added timestamp default CURRENT_DATE)''')
 
 csv_url='https://sedo.com/fileadmin/documents/resources/expiring_domain_auctions.csv'

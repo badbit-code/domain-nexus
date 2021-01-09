@@ -21,6 +21,7 @@ org integer default 0, io integer default 0,
 edu integer default 0, gov integer default 0,
 site integer default 0, biz integer default 0,
 brandable integer default 0,
+creation_date timestamp NULL,
 date_added timestamp default CURRENT_DATE)'''
 
 conn=sqlite3.connect('db/godaddy_db.db',detect_types=sqlite3.PARSE_DECLTYPES)

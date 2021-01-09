@@ -35,17 +35,17 @@ def get_archive_count(url):
 		try:
 			response=requests.get(url).text
 		except requests.exceptions.ConnectionError:
-				pass
+			pass
 		else:
 			return int(response.count(','))
 
-def get_whois(domain_name):
+def get_whois(domain_name, get_date = False):
 	try:
 		w=whois.whois(domain_name)
 	except whois.parser.PywhoisError:
 		pass # do not do anything
 	else:
-		return int(w['domain_name'] is not None)
+		return w['creation_date'] if get_date else int(w['domain_name'] is not None)
 
 @update_table('alexa')
 def alexa(domain_name):
@@ -63,6 +63,11 @@ def wayback(domain_name):
 def brandable(domain_name):
 	domain,tld=domain_name.split('.',1)
 	return len(domain)<=6 or domain in words or domain.endswith(ends_with) or domain.startswith(starts_with) # db saves this as 1 or 0, cool
+
+@update_table('creation_date')
+def creation_date(domain_name):
+	if res := get_whois(domain_name, True):
+		return res[-1] if isinstance(res, list) else res
 
 def whois_(conn,cur,table_name,domain_name):
 	similar_tld={'com': 0, 'net': 0, 'org': 0, 'io': 0, 'edu': 0, 'gov': 0, 'site': 0, 'biz': 0}

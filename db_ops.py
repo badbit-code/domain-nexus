@@ -3,7 +3,7 @@
 import sqlite3
 from datetime import datetime
 from functools import partial
-from utils import alexa, wikipedia, wayback, whois_ as whois, brandable
+from utils import alexa, wikipedia, wayback, whois_ as whois, creation_date, brandable
 
 today=f'{datetime.today().strftime("%Y-%m-%d")}'
 
@@ -13,7 +13,7 @@ def db_ops(db_path,table_name):
 	cur_two=conn.cursor() # for updating
 	for row in cur_one.execute(f'select * from {table_name} where date_added=?',(today,)):
 		common_args=conn,cur_two,table_name,row[0]
-		for func in alexa,wikipedia,wayback,whois,brandable:
+		for func in alexa,wikipedia,wayback,whois,creation_date,brandable:
 			func(*common_args)
 
 	conn.close()
@@ -40,5 +40,5 @@ def sedo():
 
 # uncomment to run
 
-godaddy()
+# godaddy()
 sedo()
