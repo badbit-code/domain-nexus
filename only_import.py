@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
 
-# import godaddy_collector
-# import sedo_collector
+import godaddy_collector
+import sedo_collector
 
 print('db ops started')
-# import db_ops
+import db_ops
 print('db ops stopped')
 
 reports=Path('reports')
