@@ -40,5 +40,5 @@ def sedo():
 
 # uncomment to run
 
-# godaddy()
+godaddy()
 sedo()
