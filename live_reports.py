@@ -5,11 +5,20 @@ import csv
 from pathlib import Path
 from operator import itemgetter
 from io import StringIO
+from ftplib import FTP
 
 import requests
 import pandas as pd
 
 reports=Path('reports')
+
+def upload(souce_dest):
+	with FTP('ftp.mcdanieltechnologies.com','datamover@tldquery.com','7T5sUnu2dQ$g') as ftp:
+		ftp.cwd('/wp-content/uploads/2020/11/reportfolder')
+		for from_, to_ in souce_dest:
+			print(from_, to_)
+			with open(from_,'rb') as f:
+				print(ftp.storbinary(f'STOR {to_}', f))
 
 def archive_count(domain_name):
 	while True:
@@ -19,9 +28,6 @@ def archive_count(domain_name):
 			pass
 		else:
 			return int(response.count(','))
-
-def seo_data(domain_name):
-	return 0 # stud method for now
 
 url='https://sedo.com/txt/auctions_us.txt'
 
@@ -40,11 +46,14 @@ res=[]
 for row in csv.reader(file_like,delimiter=';'):
 	domain_name, cost, currency = itemgetter(0,3,4)(row)
 	archive_count_=archive_count(domain_name)
-	seo_data_=seo_data(domain_name)
+	last_updated='Today'
 	currency_=currency_map[currency](cost)
-	buy=f'<a class="button" href="https://sedo.com/search/details/?domain={domain_name}&origin=export" target="_blank">Buy</a>' # this is a placeholder, later there will be new ones for every new source
+	buy=f'<a class="button" href="https://sedo.com/search/details/?domain={domain_name}&origin=export&campaignId=326646" target="_blank">Buy</a>' # this is a placeholder, later there will be new ones for every new source
 
-	res.append((domain_name,currency_,archive_count_,seo_data_, buy))
+	res.append((domain_name,currency_,archive_count_,last_updated, buy))
 
-df=pd.DataFrame(res,columns=['Domain Name','Cost','Archive Count', 'SEO Data', 'Buy'])
+df=pd.DataFrame(res,columns=['Domain Name','Cost','Archive Count', 'Last Updated', 'Buy'])
 df.to_csv(reports/'premium.csv',index=False)
+
+source_dest=[(file_name:=(reports/'premium.csv'),f'premium/{file_name.name}')]
+upload(source_dest)

@@ -6,6 +6,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
 
+
+print('Premium Reports started')
+import live_reports
+print('Premium Reports stopped')
+
 import godaddy_collector
 import sedo_collector
 
