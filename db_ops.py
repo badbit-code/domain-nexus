@@ -2,7 +2,6 @@
 
 import sqlite3
 from datetime import datetime
-from functools import partial
 from utils import alexa, wikipedia, wayback, whois_ as whois, creation_date, brandable
 
 today=f'{datetime.today().strftime("%Y-%m-%d")}'

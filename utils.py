@@ -45,7 +45,7 @@ def get_whois(domain_name, get_date = False):
 	except whois.parser.PywhoisError:
 		pass # do not do anything
 	else:
-		return w['creation_date'] if get_date else int(w['domain_name'] is not None)
+		return w.get('creation_date') if get_date else int(w['domain_name'] is not None)
 
 @update_table('alexa')
 def alexa(domain_name):
