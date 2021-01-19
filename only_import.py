@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
 
+from upload_bucket import upload
 
 print('Premium Reports started')
 import live_reports
@@ -68,9 +69,9 @@ length_report = current_report[current_report['Length'].astype(int) > 5]
 archive_report = current_report[current_report['Archive Count'].astype(int) > 0]
 creation_date_report = current_report[(today_ - current_report['Creation Date']).dt.days >= 730]
 
-current_report.to_csv(reports/'currentreport.csv',index=False)
+make_name = lambda x:f'''{x}{'_' if x else ''}{datetime.today().strftime("%Y-%m-%d")}.csv''' # should I make a folder or just name with `x`_report_name?
 
-combined_df.to_csv(f'{history}/{datetime.today().strftime("%Y-%m-%d")}.csv',index=False)
-length_report.to_csv(f'{history}/length_{datetime.today().strftime("%Y-%m-%d")}.csv',index=False)
-archive_report.to_csv(f'{history}/archive_{datetime.today().strftime("%Y-%m-%d")}.csv',index=False)
-creation_date_report.to_csv(f'{history}/creation_date_{datetime.today().strftime("%Y-%m-%d")}.csv',index=False)
+dfs = current_report, combined_df, length_report, archive_report, creation_date_report
+target_names = ['currentreport.csv', *(make_name(x) for x in ('', 'length', 'archive', 'creation_date'))]
+
+upload(zip(dfs, target_names)) # upload to spaces

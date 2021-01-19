@@ -1,26 +1,28 @@
-'''
-NT5YMFT4HB6MN4MQKQQT
-CQKY0Tn3GrfMWlCGwyKOzCOHvDQ7klDww+HLqr50t7c
-'''
-
+from contextlib import contextmanager
+from io import BytesIO
 from boto3 import session
 from botocore.client import Config
+
 
 ACCESS_ID = 'NT5YMFT4HB6MN4MQKQQT'
 SECRET_KEY = 'CQKY0Tn3GrfMWlCGwyKOzCOHvDQ7klDww+HLqr50t7c'
 
-# Initiate session
+def df2io(df):
+	(io:= BytesIO(df.to_csv(index=False).encode())).seek(0) # file pointer back to 0
+	return io
 
-session = session.Session()
-client = session.client('s3',region_name='sfo2',endpoint_url='https://sfo2.digitaloceanspaces.com',aws_access_key_id=ACCESS_ID,aws_secret_access_key=SECRET_KEY)
+@contextmanager
+def spaces_upload(access_id = ACCESS_ID, secret_key = SECRET_KEY, region_name='sfo2', bucket = 'downloads.tldquery'):
+	spaces_session = session.Session(access_id, secret_key, region_name = region_name)
+	resource = spaces_session.resource('s3', endpoint_url='https://sfo2.digitaloceanspaces.com')
+	try:
+		yield resource.Bucket(bucket)
+	finally:
+		pass # just to use this as a context manager
 
-# Upload a file to your Space
-client.upload_file('templates/file_list.html', 'downloads.tldquery', 'file_list.html', ExtraArgs = {'ACL':'public-read'})
 
-# print(client.list_buckets())
-# print(*client.list_objects_v2(Bucket='downloads.tldquery')['Contents'], sep = '\n')
-
-# for i in client.list_objects_v2(Bucket='downloads.tldquery')['Contents']:
-	# print(i['Key'])
-# print(session.get_available_services())
-# https://downloads.tldquery.sfo2.cdn.digitaloceanspaces.com/file_list.html
+def upload(files):
+	with spaces_upload() as space:
+		for source, target in files:
+			space.upload_fileobj(df2io(source), target, ExtraArgs = {'ACL':'public-read'})
+			print(f'Uploaded {target}')
