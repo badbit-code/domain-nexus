@@ -10,14 +10,14 @@ from upload_bucket import upload
 from mail import send
 
 print('Premium Reports started')
-# import live_reports
+import live_reports
 print('Premium Reports stopped')
 
-# import godaddy_collector
-# import sedo_collector
+import godaddy_collector
+import sedo_collector
 
 print('db ops started')
-# import db_ops
+import db_ops
 print('db ops stopped')
 
 reports=Path('reports')
@@ -27,7 +27,6 @@ history.mkdir(parents=True,exist_ok=True)
 today_ = datetime.today()
 today = f'{today_.strftime("%Y-%m-%d")}'
 # today='2020-11-17' # in case you need to run for a specifc date
-today='2021-01-09' # in case you need to run for a specifc date
 
 with contextlib.closing(sqlite3.connect('db/godaddy_db.db')) as conn:
 	cur=conn.cursor()
