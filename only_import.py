@@ -7,16 +7,17 @@ from pathlib import Path
 import pandas as pd
 
 from upload_bucket import upload
+from mail import send
 
 print('Premium Reports started')
-import live_reports
+# import live_reports
 print('Premium Reports stopped')
 
-import godaddy_collector
-import sedo_collector
+# import godaddy_collector
+# import sedo_collector
 
 print('db ops started')
-import db_ops
+# import db_ops
 print('db ops stopped')
 
 reports=Path('reports')
@@ -26,6 +27,7 @@ history.mkdir(parents=True,exist_ok=True)
 today_ = datetime.today()
 today = f'{today_.strftime("%Y-%m-%d")}'
 # today='2020-11-17' # in case you need to run for a specifc date
+today='2021-01-09' # in case you need to run for a specifc date
 
 with contextlib.closing(sqlite3.connect('db/godaddy_db.db')) as conn:
 	cur=conn.cursor()
@@ -49,7 +51,6 @@ for col in ('com', 'net', 'org', 'io', 'edu', 'gov', 'site', 'biz'):
 
 combined_df.available=pd.to_datetime(combined_df.available)
 combined_df.creation_date=pd.to_datetime(combined_df.creation_date)
-
 
 new_names={'domain_name': 'Domain', 'available': 'Released', 'domain_length': 'Length', 'alexa': 'Alexa', 'archive_count': 'Archive Count', 'brandable': 'Brandable','wiki':'Wiki','date_added': 'Collected', 'creation_date' : 'Creation Date'}
 
@@ -75,3 +76,21 @@ dfs = current_report, combined_df, length_report, archive_report, creation_date_
 target_names = ['currentreport.csv', *(make_name(x) for x in ('', 'length', 'archive', 'creation_date'))]
 
 upload(zip(dfs, target_names)) # upload to spaces
+
+uploaded = []
+not_uploaded = []
+
+for df, name in zip(dfs, target_names):
+	(uploaded if df.memory_usage().sum() else not_uploaded).append(name)
+
+content=f'''Start Report
+
+The following reports were uploaded successfully
+	{(chr(10) + chr(9)).join(uploaded)}
+
+The following reports were not uploaded (empty reports)
+	{(chr(10) + chr(9)).join(not_uploaded)}
+
+End Report'''
+
+send(content)

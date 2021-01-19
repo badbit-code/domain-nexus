@@ -20,7 +20,6 @@ def spaces_upload(access_id = ACCESS_ID, secret_key = SECRET_KEY, region_name='s
 	finally:
 		pass # just to use this as a context manager
 
-
 def upload(files):
 	with spaces_upload() as space:
 		for source, target in files:
