@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
 
-from upload_bucket import upload
+from bucket_ops import upload
 from mail import send
 
 print('Premium Reports started')

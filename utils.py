@@ -17,8 +17,15 @@ def update_table(column_name):
 			func_arg=func_arg or domain_name
 			print(f'{func.__name__=}{func_arg=}')
 			if result:=func(func_arg):
-				cur.execute(f'update {table_name} set {column_name}=(?) where domain_name=(?)',(result,domain_name))
-				conn.commit()
+				while True: # quick fix, need to check if it works
+					try:
+						cur.execute(f'update {table_name} set {column_name}=(?) where domain_name=(?)',(result,domain_name))
+						conn.commit()
+					except sqlite3.OperationalError as Exception:
+						print(f'Excpetion {e} in {func.__name__} for {domain_name = }')
+					else:
+						break
+
 		return inner
 	return outer
 
