@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
 
-from bucket_ops import upload
+from bucket_ops import upload, gen_csv
 from mail import send
 
 print('Premium Reports started')
@@ -92,4 +92,5 @@ The following reports were not uploaded (empty reports)
 
 End Report'''
 
-send(content)
+gen_csv() # generate and upload csv report to ftp
+send(content) # mail

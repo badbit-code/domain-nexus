@@ -1,15 +1,15 @@
+from csv import DictWriter
 from contextlib import contextmanager
-from io import BytesIO
+from io import BytesIO, TextIOWrapper
 from boto3 import session
 from botocore.client import Config
+from datetime import datetime
 
+from ftplib import FTP
 
 ACCESS_ID = 'NT5YMFT4HB6MN4MQKQQT'
 SECRET_KEY = 'CQKY0Tn3GrfMWlCGwyKOzCOHvDQ7klDww+HLqr50t7c'
 
-def df2io(df):
-	(io:= BytesIO(df.to_csv(index=False).encode())).seek(0) # file pointer back to 0
-	return io
 
 @contextmanager
 def spaces_upload(access_id = ACCESS_ID, secret_key = SECRET_KEY, region_name='sfo2', bucket = 'downloads.tldquery'):
@@ -20,19 +20,29 @@ def spaces_upload(access_id = ACCESS_ID, secret_key = SECRET_KEY, region_name='s
 	finally:
 		pass # just to use this as a context manager
 
+def df2io(df):
+	(io:= BytesIO(df.to_csv(index=False).encode())).seek(0) # file pointer back to 0
+	return io
+
 def upload(files):
 	with spaces_upload() as space:
 		for source, target in files:
 			space.upload_fileobj(df2io(source), target, ExtraArgs = {'ACL':'public-read'})
 			print(f'Uploaded {target}')
 
-
 def gen_csv():
-	with spaces_upload() as spaces:
-		for i in spaces.objects.filter(Preifx = '.csv'):
-			print(i.key)
-			print(i.size)
-			'''
-'bucket_name', 'copy_from', 'delete', 'e_tag', 'get', 'get_available_subresources', 'initiate_multipart_upload', 'key', 'last_modified', 'load', 'meta', 'owner', 'put', 'restore_object', 'size', 'storage_class', 'wait_until_exists', 'wait_until_not_exists']
-'''
-			break
+	today = datetime.now().date()
+	with spaces_upload() as spaces, FTP('ftp.mcdanieltechnologies.com','datamover@tldquery.com','7T5sUnu2dQ$g') as ftp:
+		print(ftp.cwd('/wp-content/uploads/2020/11/reportfolder'))
+		file_wrapper = TextIOWrapper((file_buffer := BytesIO()), encoding='utf-8')
+		if 'file_links.csv' not in ftp.nlst():
+			file_wrapper.write('File Name,Date,Size\n')
+		base_url = 'https://downloads.tldquery.sfo2.cdn.digitaloceanspaces.com/{}'
+
+		data_gen = ((base_url.format(i.key), i.size, i.last_modified.date()) for i in spaces.objects.all() if i.key.endswith('.csv'))
+		data_gen_str = (','.join(map(str, i)) for i in data_gen)
+
+		file_wrapper.writelines('\n'.join(data_gen_str))
+		# file_wrapper.writelines('\n'.join(','.join(map(str, (base_url.format(i.key), i.size, i.last_modified.date()))) for i in spaces.objects.all() if i.key.endswith('.csv'))
+		file_wrapper.seek(0)
+		print(ftp.storbinary(f'APPE file_links.csv', file_buffer))

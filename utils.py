@@ -45,7 +45,7 @@ def get_archive_count(url):
 			pass
 		else:
 			return int(response.count(','))
-
+'creation_date_2021-01-19.csv,534,2021-01-19 18:09:32.638000+00:00', 'creation_date_2021-01-20.csv,534,2021-01-19 19:21:28.013000+00:00', 'currentreport.csv,2660342,2021-01-19 19:21:17.700000+00:00', 'df.csv,10,2021-01-21 03:10:41.523000+00:00', 'length_2021-01-19.csv,2613084,2021-01-19 18:09:30.995000+00:00', 'length_2021-01-20.csv,2613084,2021-01-19 19:21:20.809000+00:00']
 def get_whois(domain_name, get_date = False):
 	try:
 		w=whois.whois(domain_name)

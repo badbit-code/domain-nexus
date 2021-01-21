@@ -12,4 +12,3 @@ def send(content):
 	with smtplib.SMTP_SSL('mail.tldquery.com', 465, ssl.create_default_context()) as server:
 		server.login('reports@tldquery.com', ']PYu6wn;rXx$')
 		server.send_message(msg)
-

@@ -5,20 +5,13 @@ import csv
 from pathlib import Path
 from operator import itemgetter
 from io import StringIO
-from ftplib import FTP
 
 import requests
 import pandas as pd
 
-reports=Path('reports')
+from ftp_ops import factory
 
-def upload(souce_dest):
-	with FTP('ftp.mcdanieltechnologies.com','datamover@tldquery.com','7T5sUnu2dQ$g') as ftp:
-		ftp.cwd('/wp-content/uploads/2020/11/reportfolder')
-		for from_, to_ in souce_dest:
-			print(from_, to_)
-			with open(from_,'rb') as f:
-				print(ftp.storbinary(f'STOR {to_}', f))
+reports=Path('reports')
 
 def archive_count(domain_name):
 	while True:
@@ -56,4 +49,6 @@ df=pd.DataFrame(res,columns=['Domain Name','Cost','Archive Count', 'Last Updated
 df.to_csv(reports/'premium.csv',index=False)
 
 source_dest=[(file_name:=(reports/'premium.csv'),f'premium/{file_name.name}')]
-upload(source_dest)
+
+upload = factory('upload', '/wp-content/uploads/2020/11/reportfolder') # upload to ftp
+upload(source_dest) # or factory('upload', '/wp-content/uploads/2020/11/reportfolder')(source_dest) :p
