@@ -39,7 +39,7 @@ def gen_csv():
 		if 'file_links.csv' not in ftp.nlst():
 			file_wrapper.write('File Name,Date,Size\n')
 
-		base_url = 'https://downloads.tldquery.sfo2.cdn.digitaloceanspaces.com/{}'
+		base_url = '<a href="https://downloads.tldquery.sfo2.cdn.digitaloceanspaces.com/{0}">{0}</a>'
 
 		data_gen = ((base_url.format(i.key), i.size, i.last_modified.date()) for i in spaces.objects.all() if i.key.endswith('.csv'))
 		data_gen_str = (','.join(map(str, i)) for i in data_gen)
