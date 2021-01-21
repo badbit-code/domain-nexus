@@ -92,5 +92,5 @@ The following reports were not uploaded (empty reports)
 
 End Report'''
 
-gen_csv() # generate and upload csv report to ftp
+gen_csv() # generate and upload csv report to ftp file "file_links.csv"
 send(content) # mail

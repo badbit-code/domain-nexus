@@ -35,8 +35,10 @@ def gen_csv():
 	with spaces_upload() as spaces, FTP('ftp.mcdanieltechnologies.com','datamover@tldquery.com','7T5sUnu2dQ$g') as ftp:
 		print(ftp.cwd('/wp-content/uploads/2020/11/reportfolder'))
 		file_wrapper = TextIOWrapper((file_buffer := BytesIO()), encoding='utf-8')
+		
 		if 'file_links.csv' not in ftp.nlst():
 			file_wrapper.write('File Name,Date,Size\n')
+
 		base_url = 'https://downloads.tldquery.sfo2.cdn.digitaloceanspaces.com/{}'
 
 		data_gen = ((base_url.format(i.key), i.size, i.last_modified.date()) for i in spaces.objects.all() if i.key.endswith('.csv'))
@@ -45,4 +47,4 @@ def gen_csv():
 		file_wrapper.writelines('\n'.join(data_gen_str))
 		# file_wrapper.writelines('\n'.join(','.join(map(str, (base_url.format(i.key), i.size, i.last_modified.date()))) for i in spaces.objects.all() if i.key.endswith('.csv'))
 		file_wrapper.seek(0)
-		print(ftp.storbinary(f'APPE file_links.csv', file_buffer))
+		print(ftp.storbinary('APPE file_links.csv', file_buffer))
