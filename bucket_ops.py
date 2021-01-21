@@ -36,4 +36,3 @@ def gen_csv():
 'bucket_name', 'copy_from', 'delete', 'e_tag', 'get', 'get_available_subresources', 'initiate_multipart_upload', 'key', 'last_modified', 'load', 'meta', 'owner', 'put', 'restore_object', 'size', 'storage_class', 'wait_until_exists', 'wait_until_not_exists']
 '''
 			break
-gen_csv()
