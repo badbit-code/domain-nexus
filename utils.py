@@ -21,7 +21,7 @@ def update_table(column_name):
 					try:
 						cur.execute(f'update {table_name} set {column_name}=(?) where domain_name=(?)',(result,domain_name))
 						conn.commit()
-					except sqlite3.OperationalError as Exception:
+					except sqlite3.OperationalError as e:
 						print(f'Excpetion {e} in {func.__name__} for {domain_name = }')
 					else:
 						break
