@@ -14,6 +14,7 @@ from ftp_ops import factory
 reports=Path('reports')
 
 def archive_count(domain_name):
+	return 1
 	while True:
 		try:
 			response=requests.get(f'https://web.archive.org/cdx/search/cdx?url={domain_name}&output=json&fl=statuscode').text
