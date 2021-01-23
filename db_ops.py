@@ -21,7 +21,7 @@ def godaddy():
 	# establish and terminate a connection once `table_names` are retrieved
 	# this is done so that the interface to `db_ops` need not be changed
 	# establish a new connection there to work with
-	conn=sqlite3.connect(db_path:='db/godaddy_db.db')
+	conn=sqlite3.connect(db_path:='db/__godaddy_db.db')
 	cur=conn.cursor()
 	cur.execute('select tbl_name from sqlite_master where type="table"')
 	table_names=cur.fetchall()
@@ -32,7 +32,7 @@ def godaddy():
 
 
 def sedo():
-	db_ops('db/sedo_db.db','sedo_details')
+	db_ops('db/__sedo_db.db','sedo_details')
 
 
 # thread maybe?

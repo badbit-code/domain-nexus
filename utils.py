@@ -30,14 +30,17 @@ def update_table(column_name):
 	return outer
 
 def get_alexa(url):
+	return 0
 	soup=BeautifulSoup(requests.get(url).text,'lxml')
 	if country:=soup.find('country'):
 		return country['rank']
 
 def get_wiki_count(url):
+	return 0
 	return len(requests.get(url).json()[1])
 
 def get_archive_count(url):
+	return 0
 	while True:
 		try:
 			response=requests.get(url).text
@@ -47,6 +50,7 @@ def get_archive_count(url):
 			return int(response.count(','))
 			
 def get_whois(domain_name, get_date = False):
+	return 0
 	try:
 		w=whois.whois(domain_name)
 	except whois.parser.PywhoisError:

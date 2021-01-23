@@ -28,12 +28,12 @@ today_ = datetime.today()
 today = f'{today_.strftime("%Y-%m-%d")}'
 # today='2020-11-17' # in case you need to run for a specifc date
 
-with contextlib.closing(sqlite3.connect('db/godaddy_db.db')) as conn:
+with contextlib.closing(sqlite3.connect('db/__godaddy_db.db')) as conn:
 	cur=conn.cursor()
 	cur.execute('select tbl_name from sqlite_master where type="table"')
 	godaddy_df=pd.concat(pd.read_sql_query(f'select * from {table_name} where date_added=?',con=conn,params=(today,)) for table_name, *_ in cur)
 
-with contextlib.closing(sqlite3.connect('db/sedo_db.db')) as conn:
+with contextlib.closing(sqlite3.connect('db/__sedo_db.db')) as conn:
 	cur=conn.cursor()
 	sedo_df=pd.read_sql_query('select * from sedo_details where date_added=?',con=conn,params=(today,))
 

@@ -11,7 +11,7 @@ Path('db').mkdir(exist_ok=True)
 
 limiter=None # set this to None for writing all rows to db
 
-conn=sqlite3.connect('db/sedo_db.db',detect_types=sqlite3.PARSE_DECLTYPES)
+conn=sqlite3.connect('db/__sedo_db.db',detect_types=sqlite3.PARSE_DECLTYPES)
 cur=conn.cursor()
 
 cur.execute('''create table if not exists sedo_details

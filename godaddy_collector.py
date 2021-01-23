@@ -24,7 +24,7 @@ brandable integer default 0,
 creation_date timestamp NULL,
 date_added timestamp default CURRENT_DATE)'''
 
-conn=sqlite3.connect('db/godaddy_db.db',detect_types=sqlite3.PARSE_DECLTYPES)
+conn=sqlite3.connect('db/__godaddy_db.db',detect_types=sqlite3.PARSE_DECLTYPES)
 cur=conn.cursor()
 
 def download_and_extract(file_name):
