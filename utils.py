@@ -30,17 +30,17 @@ def update_table(column_name):
 	return outer
 
 def get_alexa(url):
-	return 0
+	return 1
 	soup=BeautifulSoup(requests.get(url).text,'lxml')
 	if country:=soup.find('country'):
 		return country['rank']
 
 def get_wiki_count(url):
-	return 0
+	return 1
 	return len(requests.get(url).json()[1])
 
 def get_archive_count(url):
-	return 0
+	return 1
 	while True:
 		try:
 			response=requests.get(url).text
@@ -50,7 +50,7 @@ def get_archive_count(url):
 			return int(response.count(','))
 			
 def get_whois(domain_name, get_date = False):
-	return 0
+	return 1
 	try:
 		w=whois.whois(domain_name)
 	except whois.parser.PywhoisError:
@@ -72,6 +72,7 @@ def wayback(domain_name):
 
 @update_table('brandable')
 def brandable(domain_name):
+	return 1
 	domain,tld=domain_name.split('.',1)
 	return len(domain)<=6 or domain in words or domain.endswith(ends_with) or domain.startswith(starts_with) # db saves this as 1 or 0, cool
 
