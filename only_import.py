@@ -10,7 +10,7 @@ from bucket_ops import upload, gen_csv
 from mail import send
 
 print('Premium Reports started')
-import live_reports
+# import live_reports
 print('Premium Reports stopped')
 
 import godaddy_collector
