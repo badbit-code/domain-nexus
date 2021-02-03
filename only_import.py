@@ -1,7 +1,7 @@
 #! /usr/local/bin/python3.9
 
 import sqlite3
-import contextlib
+from contextlib import closing
 from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
@@ -13,8 +13,8 @@ print('Premium Reports started')
 # import live_reports
 print('Premium Reports stopped')
 
-import godaddy_collector
-import sedo_collector
+# import godaddy_collector
+# import sedo_collector
 
 print('db ops started')
 import db_ops
@@ -28,13 +28,11 @@ today_ = datetime.today()
 today = f'{today_.strftime("%Y-%m-%d")}'
 # today='2020-11-17' # in case you need to run for a specifc date
 
-with contextlib.closing(sqlite3.connect('db/__godaddy_db.db')) as conn:
-	cur=conn.cursor()
+with closing(sqlite3.connect('db/__godaddy_db.db')) as conn, closing(conn.cursor()) as cur:
 	cur.execute('select tbl_name from sqlite_master where type="table"')
 	godaddy_df=pd.concat(pd.read_sql_query(f'select * from {table_name} where date_added=?',con=conn,params=(today,)) for table_name, *_ in cur)
 
-with contextlib.closing(sqlite3.connect('db/__sedo_db.db')) as conn:
-	cur=conn.cursor()
+with closing(sqlite3.connect('db/__sedo_db.db')) as conn, closing(conn.cursor()) as cur:
 	sedo_df=pd.read_sql_query('select * from sedo_details where date_added=?',con=conn,params=(today,))
 
 godaddy_df['Source'] = 'Godaddy'

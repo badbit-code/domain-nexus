@@ -15,32 +15,23 @@ def update_table(column_name):
 	def outer(func):
 		def inner(conn,cur,table_name,domain_name,func_arg=None):
 			func_arg=func_arg or domain_name
-			print(f'{func.__name__=}{func_arg=}')
+			# print(f'{func.__name__=}{func_arg=}')
 			if result:=func(func_arg):
-				while True: # quick fix, need to check if it works
-					try:
-						cur.execute(f'update {table_name} set {column_name}=(?) where domain_name=(?)',(result,domain_name))
-						conn.commit()
-					except sqlite3.OperationalError as e:
-						print(f'Excpetion {e} in {func.__name__} for {domain_name = }')
-					else:
-						break
-
+				# cur.execute(f'update {table_name} set {column_name}=(?) where domain_name=(?)',(result,domain_name))
+				# conn.commit()
+				pass
 		return inner
 	return outer
 
 def get_alexa(url):
-	return 1
 	soup=BeautifulSoup(requests.get(url).text,'lxml')
 	if country:=soup.find('country'):
 		return country['rank']
 
 def get_wiki_count(url):
-	return 1
 	return len(requests.get(url).json()[1])
 
 def get_archive_count(url):
-	return 1
 	while True:
 		try:
 			response=requests.get(url).text
@@ -50,7 +41,6 @@ def get_archive_count(url):
 			return int(response.count(','))
 			
 def get_whois(domain_name, get_date = False):
-	return 1
 	try:
 		w=whois.whois(domain_name)
 	except whois.parser.PywhoisError:
@@ -72,7 +62,6 @@ def wayback(domain_name):
 
 @update_table('brandable')
 def brandable(domain_name):
-	return 1
 	domain,tld=domain_name.split('.',1)
 	return len(domain)<=6 or domain in words or domain.endswith(ends_with) or domain.startswith(starts_with) # db saves this as 1 or 0, cool
 
