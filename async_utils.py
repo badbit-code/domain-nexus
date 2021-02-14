@@ -60,8 +60,9 @@ async def wayback(domain_name, session):
 	while True:
 		try:
 			response = await session.get(url)
-		except (aiohttp.client_exceptions.ClientConnectorError, aiohttp.client_exceptions.ClientOSError):
-			print(f'whois exception for {domain_name}')
+		# except (aiohttp.client_exceptions.ClientConnectorError, aiohttp.client_exceptions.ClientOSError):
+		except Exception as e:
+			print(f'wayback exception for {domain_name}', e)
 			await asyncio.sleep(0)
 		else:
 			return (await response.text()).count(',')
@@ -70,7 +71,9 @@ async def wayback(domain_name, session):
 async def __whois(domain_name):
 	try:
 		response = await asyncwhois.aio_lookup(domain_name)
-	except (asyncwhois.errors.WhoIsQueryConnectError, asyncwhois.errors.WhoIsQueryParserError):
+	# except (asyncwhois.errors.WhoIsQueryConnectError, asyncwhois.errors.WhoIsQueryParserError):
+	except Exception as e:
+		print(f'whois exception for {domain_name}', e)
 		await asyncio.sleep(0)
 	else:
 		response = response.parser_output
