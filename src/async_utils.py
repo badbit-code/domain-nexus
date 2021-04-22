@@ -1,9 +1,10 @@
 from json import load
 import asyncio
+from typing import Optional
 
 import aiohttp
 import asyncwhois
-from bs4 import BeautifulSoup
+import re
 
 # for use with `brandable` function
 with open("words.json") as f:
@@ -88,56 +89,34 @@ def logger(func):
     return wrapper
 
 
-@rename
-def __alexa(response):
-    # blocking, needs to be run in `run_in_executor`
-    soup = BeautifulSoup(response, "lxml")
-    if country := soup.find("country"):
-        return country["rank"]
-    return -999
 
+async def alexa(domain_name, session) -> int:
+    async with session.get(f"http://data.alexa.com/data?cli=2&url={domain_name}") as response:
+        text = await response.read()
+    try:
+        return int(re.search(b'RANK="(1)"', text).groups()[0])
+    except (TypeError, AttributeError):
+        return -999
 
-@logger
 async def brandable(domain_name, session):
-    domain, tld = domain_name.split(".", 1)
+    domain, _ = domain_name.split(".", 1)
     return (
         len(domain) <= 6
-        or domain in words
+        or (domain in words
         or domain.endswith(ends_with)
-        or domain.startswith(starts_with)
+        or domain.startswith(starts_with))
     )  # db saves this as 1 or 0, cool
 
 
-@logger
-async def alexa(domain_name, session):
-    url = f"http://data.alexa.com/data?cli=2&url={domain_name}"
-    response = await session.get(url)
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, __alexa, await response.text())
-
-
-@logger
-async def wikipedia(domain_name, session):
-    url = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={domain_name}&limit=max&namespace=0&format=json&profile=strict"
-    response = await session.get(url)
-    return len((await response.json())[1])
-
-
-@logger
 async def wayback(domain_name, session):
-    url = f"https://web.archive.org/cdx/search/cdx?url={domain_name}&output=json&fl=statuscode"
-    while True:
-        try:
-            response = await session.get(url)
-        # except (aiohttp.client_exceptions.ClientConnectorError, aiohttp.client_exceptions.ClientOSError):
-        except Exception as e:
-            print(f"wayback exception for {domain_name}", e)
-            await asyncio.sleep(0)
-        else:
-            return (await response.text()).count(",")
+    async with session.get(f"https://web.archive.org/cdx/search/cdx?url={domain_name}&output=json&fl=statuscode") as response:
+        return (await response.text()).count(",")
+
+async def wikipedia(domain_name, session):
+    async with session.get(f"https://en.wikipedia.org/w/api.php?action=opensearch&search={domain_name}&limit=max&namespace=0&format=json&profile=strict") as response:
+        return len((await response.json())[1])
 
 
-@logger
 @rename
 async def __whois(domain_name):
     try:
