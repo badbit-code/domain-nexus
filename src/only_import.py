@@ -6,19 +6,19 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
 
-from bucket_ops import upload, gen_csv
-from mail import send
+from .bucket_ops import upload, gen_csv
+from .mail import send
 
 print("Premium Reports started")
-import live_reports
+import .live_reports
 
 print("Premium Reports stopped")
 
-import godaddy_collector
-import sedo_collector
+import .godaddy_collector
+import .sedo_collector
 
 print("db ops started")
-import async_db_ops
+import .async_db_ops
 
 print("db ops stopped")
 

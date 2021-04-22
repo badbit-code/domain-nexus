@@ -9,7 +9,7 @@ from io import StringIO
 import requests
 import pandas as pd
 
-from ftp_ops import factory
+from .ftp_ops import factory
 
 reports = Path("reports")
 
