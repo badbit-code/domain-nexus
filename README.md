@@ -1,8 +1,8 @@
 # Expired Domains
 
 ## TODO 
-[_] Create proper readme
-[_] Create diagram/design of systems 
-[_] Detemine release and dev cycles
-[_] Define MVP 
-[_] Create proof-of-concept prototype
+- [ ] Create proper readme
+- [ ] Create diagram/design of systems 
+- [ ] Detemine release and dev cycles
+- [ ] Define MVP 
+- [ ] Create proof-of-concept prototype
