@@ -8,10 +8,10 @@ def client():
     with app.test_client() as client:
         yield client
 
-def test_basic_sanity(client):
+def test_sanity(client):
     assert client is not None
 
-def test_basic_query(client):
+def test_sanity_basic_query(client):
 
     return
 
@@ -22,11 +22,12 @@ def test_basic_query(client):
 
     data = json.loads(response.data)
 
-    assert len(data["results"]) == 500
+    assert data["results"][0]["name"] == "boston"
+
     assert data["pages"] == 7000
     
 
-def test_keyword_query(client):
+def test_sanity_keyword_query(client):
 
     import json
 
@@ -35,8 +36,7 @@ def test_keyword_query(client):
 
     data = json.loads(response.data)
 
-    assert len(data["results"]) == 500
-    assert data["pages"] == 7000
+    assert data["results"][0]["name"] == "tacojohns"
 
     pass
 
