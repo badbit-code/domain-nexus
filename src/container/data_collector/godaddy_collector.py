@@ -2,12 +2,13 @@
 
 from pathlib import Path
 from contextlib import closing
-import sqlite3
+import psycopg2
 from ftplib import FTP
 from tempfile import TemporaryFile
 from zipfile import ZipFile
 from io import BytesIO
 from json import loads
+import os
 
 Path("db").mkdir(exist_ok=True)
 
@@ -15,7 +16,7 @@ db_path = "db/__godaddy_db.db"
 
 limiter = None  # set this to None for writing all rows to db
 
-create_query = """create table if not exists godaddy_details
+create_query = """CREAT TABLE IF NOT EXISTS godaddy_details
 (domain_name text primary key, available timestamp, domain_length text,
 wiki integer default 0, alexa integer DEFAULT -999,
 archive_count integer default 0,
@@ -50,6 +51,13 @@ def add_to_db(file_name, json_contents):
         ]
         for x in loads(json_contents)["data"]
     ][:limiter]
+    connection = psycopg2.connect(user=os.environ["POSTGRES_USER"],
+                                  password=os.environ["POSTGRES_PASSWORD"],
+                                  host="127.0.0.1",
+                                  port="5432",
+                                  database="postgres_db")
+    
+    
     with sqlite3.connect(
         db_path, detect_types=sqlite3.PARSE_DECLTYPES
     ) as conn, closing(conn.cursor()) as cur:
