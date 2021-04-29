@@ -2,6 +2,13 @@ import os
 
 from flask import Flask, request
 
+from psycopg2 import connect
+from psycopg2.extras import RealDictCursor
+
+conn = connect(
+    sslmode='verify-ca'
+)
+
 def create_app(test_config=None):
 
     app = Flask(__name__, instance_relative_config=True)
@@ -14,19 +21,24 @@ def create_app(test_config=None):
     @app.route('/api/domains')
     def api_domains():
         """
-        term : Search term to use to lookup domains using fuzzy matching
+        term: Search term to use to lookup domains using fuzzy matching
         limit: Limit the number of result that are returned. between 1-499
         page: Return the nth page of results that match this query
         """
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor.execute("SELECT name,tld from public.domains")
+        rows = cursor.fetchall()
 
         term = request.args.get("term")
         limit = request.args.get("limit")
         page = request.args.get("page")
 
+
         if term is not None:
             return {
                 "results":[
-                    {"name":"tacojohns"}
+                    {"domain_name": f"{row['name']}.{row['tld']}"}
+                    for row in rows
                 ],
                 "current_offset":0,
                 "pages":7000,
@@ -36,7 +48,8 @@ def create_app(test_config=None):
         else:
             return {
                 "results":[
-                    {"name":"boston"}
+                    {"domain_name": f"{row['name']}.{row['tld']}"}
+                    for row in rows
                 ],
                 "current_offset":0,
                 "pages":7000,
@@ -46,3 +59,4 @@ def create_app(test_config=None):
 
     return app
 
+create_app()

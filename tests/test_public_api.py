@@ -22,7 +22,7 @@ def test_sanity_basic_query(client):
 
     data = json.loads(response.data)
 
-    assert data["results"][0]["name"] == "boston"
+    assert data["results"][0]["domain_name"] == "boston"
 
     assert data["pages"] == 7000
     
@@ -36,7 +36,7 @@ def test_sanity_keyword_query(client):
 
     data = json.loads(response.data)
 
-    assert data["results"][0]["name"] == "tacojohns"
+    assert data["results"][0]["domain_name"] == "tacojohns"
 
     pass
 
