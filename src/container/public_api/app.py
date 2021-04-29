@@ -7,11 +7,14 @@ from psycopg2.extras import RealDictCursor
 
 conn = connect(
     sslmode='verify-ca'
+    sslrootcert="./root.crt"
 )
 
 def create_app(test_config=None):
 
     app = Flask(__name__, instance_relative_config=True)
+
+    print("RUNNING")
 
     @app.errorhandler(404)
     def page_not_found(e):
@@ -59,4 +62,4 @@ def create_app(test_config=None):
 
     return app
 
-create_app()
+app = create_app()
