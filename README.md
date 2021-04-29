@@ -2,7 +2,7 @@
 
 ## TODO 
 - [ ] Create proper readme. Define basic project readme structure
-- [ ] Create diagram/design of systems 
+- [x] Create diagram/design of systems 
 - [ ] Detemine release and dev cycles
 - [ ] Define MVP 
 - [ ] Create proof-of-concept prototype
