@@ -14,31 +14,31 @@ Data Schema
 domain name             : str 256 char
 top level domain name   : str 64 char
 registrar               : str 64 or int Enum   
-grace start date        : datatime or UTC 64bit timestamp 
-full expire date        : datatime or UTC 64bit timestamp 
-creation date           : datatime or UTC 64bit timestamp 
+grace start date        : datetime or UTC 64bit timestamp 
+full expire date        : datetime or UTC 64bit timestamp 
+creation date           : datetime or UTC 64bit timestamp 
 HAS_WIKI                : bool
 alexa_score             : int
 brandable_score         : int
 market_sectors          : string[]
 # Local bookkeeping
-local update date       : datatime or UTC 64bit timestamp 
-local retrieval date    : datatime or UTC 64bit timestamp 
+local update date       : datetime or UTC 64bit timestamp 
+local retrieval date    : datetime or UTC 64bit timestamp 
 ```
 
 ```SQL
 CREATE TABLE domains (
-	id 				serial 				PRIMARY KEY,
-	name 			VARCHAR (256)	 	NOT NULL,
-	tld 				VARCHAR( 63 ) 		NOT NULL,
-	registrar 		int 					NOT NULL,
- 	expired 			timestamp 			NOT NULL,
-	created			timestamp			NOT NULL,
-	updated			timestamp			DEFAULT   CURRENT_TIMESTAMP,
-	retrieved		timestamp			DEFAULT   CURRENT_TIMESTAMP,
-	HAS_WIKI		boolean				DEFAULT FALSE,
-	alexa_score		int					DEFAULT 0,
-	branding_score	int					DEFAULT 0
+    id              bigserial       PRIMARY KEY,
+    name            VARCHAR (256)   NOT NULL,
+    tld             VARCHAR( 63 )   NOT NULL,
+    registrar       int             NOT NULL,
+    expired         timestamp       NOT NULL,
+    created         timestamp       NOT NULL,
+    updated         timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    retrieved       timestamp       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    HAS_WIKI        boolean         NOT NULL DEFAULT FALSE,
+    alexa_score     int             NOT NULL DEFAULT 0,
+    branding_score  int             NOT NULL DEFAULT 0
 );
 ```
 
