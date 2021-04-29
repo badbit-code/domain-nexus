@@ -108,3 +108,4 @@ config.env
 *.csr
 *.key
 *.pem
+*.crt
