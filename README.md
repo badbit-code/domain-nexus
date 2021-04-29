@@ -26,6 +26,22 @@ local update date       : datatime or UTC 64bit timestamp
 local retrieval date    : datatime or UTC 64bit timestamp 
 ```
 
+```SQL
+CREATE TABLE domains (
+	id 				serial 				PRIMARY KEY,
+	name 			VARCHAR (256)	 	NOT NULL,
+	tld 				VARCHAR( 63 ) 		NOT NULL,
+	registrar 		int 					NOT NULL,
+ 	expired 			timestamp 			NOT NULL,
+	created			timestamp			NOT NULL,
+	updated			timestamp			DEFAULT   CURRENT_TIMESTAMP,
+	retrieved		timestamp			DEFAULT   CURRENT_TIMESTAMP,
+	HAS_WIKI		boolean				DEFAULT FALSE,
+	alexa_score		int					DEFAULT 0,
+	branding_score	int					DEFAULT 0
+);
+```
+
 if domain is sold in expire or added to listing time period it is worth more because no expired date on domain which hurts SEO
 
 Expiring in purgatory:
