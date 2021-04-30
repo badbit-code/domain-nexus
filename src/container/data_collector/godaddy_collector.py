@@ -1,14 +1,14 @@
-#! /usr/local/bin/python3.9
-
 from pathlib import Path
 from contextlib import closing
-import psycopg2
+#import psycopg2
 from ftplib import FTP
 from tempfile import TemporaryFile
 from zipfile import ZipFile
 from io import BytesIO
+import json
 from json import loads
 import os
+from typing import Generator
 
 Path("db").mkdir(exist_ok=True)
 
@@ -30,14 +30,8 @@ date_added timestamp default CURRENT_DATE)"""
 
 
 def download_and_extract(file_name):
-    print(f"Downloading {file_name}")
-    with BytesIO() as tempfile:
-        ftp.retrbinary(f"RETR {file_name}", tempfile.write)
-        with ZipFile(tempfile) as zip_:
-            file_to_extract = file_name.rsplit(".", 1)[0]
-            with zip_.open(file_to_extract) as json_contents:
-                file_to_extract = file_name.rsplit(".", 1)[0]
-                add_to_db(file_to_extract, json_contents.read().decode("utf-8"))
+    
+    
 
 
 def add_to_db(file_name, json_contents):
@@ -51,11 +45,11 @@ def add_to_db(file_name, json_contents):
         ]
         for x in loads(json_contents)["data"]
     ][:limiter]
-    connection = psycopg2.connect(user=os.environ["POSTGRES_USER"],
+    """connection = psycopg2.connect(user=os.environ["POSTGRES_USER"],
                                   password=os.environ["POSTGRES_PASSWORD"],
                                   host="127.0.0.1",
                                   port="5432",
-                                  database="postgres_db")
+                                  database="postgres_db")"""
     
     
     with sqlite3.connect(
@@ -69,12 +63,18 @@ def add_to_db(file_name, json_contents):
 
     conn.close()
 
-
-with FTP("ftp.godaddy.com", "auctions") as ftp:
-    files_needed = (
-        x
-        for x in ftp.nlst()
-        if x.startswith("all_listings") and not x.startswith("all_listings_")
-    )
-    for file in files_needed:
-        download_and_extract(file)
+def download_files_from_godaddy() -> list:
+    with FTP("ftp.godaddy.com", "auctions") as ftp:
+        files_needed = [
+            x
+            for x in ftp.nlst()
+            if x.startswith("all_listings") and not x.startswith("all_listings_")
+        ]
+        print(f"Downloading {file_name}")
+        with BytesIO() as tempfile:
+            ftp.retrbinary(f"RETR {file_name}", tempfile.write)
+            """with ZipFile(tempfile) as zip_:
+                file_to_extract = file_name.rsplit(".", 1)[0]
+                with zip_.open(file_to_extract) as json_contents:
+                    file_to_extract = file_name.rsplit(".", 1)[0]
+                    add_to_db(file_to_extract, json_contents.read().decode("utf-8"))"""

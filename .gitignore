@@ -109,3 +109,6 @@ config.env
 *.key
 *.pem
 *.crt
+
+# data
+all_listings*

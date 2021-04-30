@@ -16,7 +16,7 @@ class CollectorManager:
 
 
 if __name__ == "__main__":
-    
+
     from collector import Collector
     
     collector = Collector
