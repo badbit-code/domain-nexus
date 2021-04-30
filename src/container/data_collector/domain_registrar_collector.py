@@ -25,14 +25,12 @@ class DomainRegistrarCollector:
         {
             name: str, #Name of the domain following TLD
             tld: str,
+            registrar: int, # The registrar id value in the registrar table
             expired: epoch_int, # Can be 0, indicating that a subsequent DB pass must be made to gather the expirer information
-            created: epoch_int, # Can be 0, indicating that a subsequent DB pass must be made to gather the created information
-            alexa_score: int, # Can be -1, indicating that a subsequent DB pass must be made to gather the alexa_score information
-            branding_score: int, # Can be -1, indicating that a subsequent DB pass must be made to gather the branding_score information
+            registered: epoch_int, # Can be 0, indicating that a subsequent DB pass must be made to gather the created information
         }
         """
         return []
-
 
     def upload_to_db(self, conn):
 
@@ -49,61 +47,9 @@ class DomainRegistrarCollector:
         if len(new_domains) > 0:
 
             # Insert in batches of 100
-            batch_size = 1000
-
-            columns=new_domains[0].keys()
-
-            query = "INSERT INTO domains ({}) VALUES %s ON CONFLICT (id) DO NOTHING".format(",".join(columns))
-
-            for batch_id in range(math.ceil(len(new_domains)/batch_size)):
-
-                if batch_id > 50:
-                    break
-
-                batch = new_domains[(batch_id * batch_size) :( min(len(new_domains), batch_id * batch_size + batch_size))]
-
-                execute_values(cursor, query, [[value for value in d.values()] for d in batch])
-            
-            conn.commit()
-
-            self.pending_domains.clear()
-
-        for batch_id in range(math.ceil(len(self.pending_domains)/batch_size)):
-
-            batch = new_domains[(batch_id * batch_size) :( min(len(new_domains), batch_id * batch_size + batch_size))]
-            
-            data = StringIO()
-            
-            data.write('\n'.join([f'{d["name"]},{d["tld"]},{d["registrar"]},{d["expired"]},{d["created"]},{d["alexa_score"]},{d["branding_score"]}' for d in batch] ))
-
-            data.seek(0)
-
-
-            cursor.copy_expert(data,"domains", sep=",", )
-
-            cursor.copy_from(data,"domains", sep=",", columns=("name","tld","registrar","expired","created","alexa_score","branding_score"))
-
-
-            self.pending_domains.clear()
-
-    def upload_to_db_with_temp_table(self, conn):
-
-        import math
-
-        from io import StringIO
-
-        from psycopg2.extras import RealDictCursor, execute_values
-
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-
-        new_domains = self.map_to_internal_schema()
-
-        if len(new_domains) > 0:
-
-            # Insert in batches of 100
             batch_size = 200000
 
-            columns=new_domains[0].keys()
+            # columns=new_domains[0].keys()
 
             #cursor.execute("""DROP TABLE temp_domains""")
             cursor.execute("""
@@ -111,10 +57,8 @@ class DomainRegistrarCollector:
                     name text,
                     tld text,
                     registrar int,
-                    expired timestamp,
-                    created timestamp,
-                    alexa_score int,
-                    branding_score int
+                    expired timestampz,
+                    registered timestampz
                 )
             """)
 
@@ -131,11 +75,11 @@ class DomainRegistrarCollector:
 
                 data.seek(0)
 
-                cursor.copy_from(data,"temp_domains", sep=",", columns=("name","tld","registrar","expired","created","alexa_score","branding_score"))
+                cursor.copy_from(data,"temp_domains", sep=",", columns=("name","tld","registrar","expired","registered"))
             
             cursor.execute("""
-                INSERT INTO domains (name,tld,registrar,expired,created,alexa_score,branding_score)
-                SELECT name,tld,registrar,expired,created,alexa_score,branding_score FROM temp_domains
+                INSERT INTO domains (name,tld,registrar,expired,registered)
+                SELECT name,tld,registrar,expired,registered FROM temp_domains
                 ON CONFLICT (id) DO NOTHING
             """)
 
@@ -155,9 +99,7 @@ class GoDaddyCollector(DomainRegistrarCollector):
                 "tld": domain["domainName"].split(".")[1],
                 "registrar":1,
                 "expired":datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
-                "created":datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
-                "alexa_score":-1,
-                "branding_score":-1,
+                "registered":datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
             }
             for domain in self.pending_domains
         ]
@@ -224,11 +166,9 @@ class SedoCollector(DomainRegistrarCollector):
             {
                 "name": domain["domainName"].split(".")[0],
                 "tld": domain["domainName"].split(".")[1],
-                "registrar":1,
+                "registrar":2,
                 "expired":datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
-                "created":datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
-                "alexa_score":-1,
-                "branding_score":-1,
+                "registered":datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
             }
             for domain in self.pending_domains
         ]
@@ -236,8 +176,8 @@ class SedoCollector(DomainRegistrarCollector):
     def gather(self):
         
         import pandas as pd
-        csv_url = pd.read_csv("https://sedo.com/fileadmin/documents/resources/expiring_domain_auctions.csv")
-        response = requests.get(csv_url)
+        sedo_df = pd.read_csv("https://sedo.com/fileadmin/documents/resources/expiring_domain_auctions.csv")
+        print(sedo_df.head())
         
         
 
