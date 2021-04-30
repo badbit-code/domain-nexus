@@ -29,7 +29,7 @@ def create_app(test_config=None):
         page: Return the nth page of results that match this query
         """
         cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT name,tld from public.domains")
+        cursor.execute("SELECT name,tld from public.domains LIMIT 500")
         rows = cursor.fetchall()
 
         term = request.args.get("term")
