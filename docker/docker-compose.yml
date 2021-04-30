@@ -5,7 +5,19 @@ services:
     env_file:
       - ../.env # configure postgres
     ports:
-      - "127.0.0.1::5432"
+      - "127.0.0.1:5432:5432"
+    volumes:
+      #- database-data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d
+
+  collector:
+    build:
+      context: ../src/container/data_collector
+      dockerfile: ../../../docker/collector.Dockerfile
+    env_file:
+      - ../.env # configure postgres
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
       #- database-data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
       - ./init-scripts:/docker-entrypoint-initdb.d
