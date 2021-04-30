@@ -1,10 +1,13 @@
 version: '3'
 services:
   database:
-    image: "postgres:13.2"
+    image: "postgres:12.6"
     env_file:
       - ../.env # configure postgres
+    ports:
+      - "127.0.0.1::5432"
     volumes:
-      - database-data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
+      #- database-data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d
 volumes:
   database-data: # named volumes can be managed easier using docker-compose

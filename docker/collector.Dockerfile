@@ -28,4 +28,4 @@ COPY --from=builder /usr/local/lib/python3.9/ /usr/local/lib/python3.9/
 COPY . .
 
 #ENTRYPOINT [ "python", "-c", "import ssl; print(ssl.OPENSSL_VERSION)" ]
-ENTRYPOINT [ "python", "src/godaddy_collector.py"]
+ENTRYPOINT [ "python", "src/collector.py"]

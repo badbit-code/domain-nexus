@@ -108,3 +108,6 @@ config.env
 *.csr
 *.key
 *.pem
+
+# data
+all_listings*
