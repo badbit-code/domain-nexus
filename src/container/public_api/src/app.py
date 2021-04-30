@@ -6,7 +6,12 @@ from psycopg2 import connect
 from psycopg2.extras import RealDictCursor
 
 conn = connect(
-    sslmode='verify-ca'
+    host=os.getenv("DB_HOST"),
+    dbname=os.getenv("DB_DB"),
+    user=os.getenv("DB_USERNAME"),
+    password=os.getenv("DB_PASSWORD"),
+    port=os.getenv("DB_PORT"),
+    sslmode='verify-ca',
     sslrootcert="./root.crt"
 )
 

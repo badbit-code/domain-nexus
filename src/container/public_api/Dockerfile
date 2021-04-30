@@ -28,6 +28,6 @@ ENV ENABLE_PROFILER=1
 # Grab packages from builder
 COPY --from=builder /usr/local/lib/python3.9/ /usr/local/lib/python3.9/
 COPY ./ca-certificate.crt root.crt
-COPY ./src/container/public_api ./
+COPY ./src/* .
 
 ENTRYPOINT [ "python", "-m", "flask", "run", "--host=0.0.0.0", "--port=8050"]
