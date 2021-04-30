@@ -101,7 +101,11 @@ class DomainRegistrarCollector:
         if len(new_domains) > 0:
 
             # Insert in batches of 100
+<<<<<<< HEAD
             batch_size = 200000
+=======
+            batch_size = 10000
+>>>>>>> 4770bf456b5469053302898738301a0248971e72
 
             columns=new_domains[0].keys()
 
@@ -133,6 +137,7 @@ class DomainRegistrarCollector:
 
                 cursor.copy_from(data,"temp_domains", sep=",", columns=("name","tld","registrar","expired","created","alexa_score","branding_score"))
 
+<<<<<<< HEAD
                 conn.commit()
             
             cursor.execute("""
@@ -140,6 +145,15 @@ class DomainRegistrarCollector:
                 SELECT name,tld,registrar,expired,created,alexa_score,branding_score FROM temp_domains
                 ON CONFLICT (id) DO NOTHING
             """)
+=======
+                cursor.execute("""
+                    INSERT INTO domains (name,tld,registrar,expired,created,alexa_score,branding_score)
+                    SELECT name,tld,registrar,expired,created,alexa_score,branding_score FROM temp_domains
+                    ON CONFLICT (id) DO NOTHING
+                """)
+
+                conn.commit()
+>>>>>>> 4770bf456b5469053302898738301a0248971e72
 
 
             self.pending_domains.clear()
