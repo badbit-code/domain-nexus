@@ -23,16 +23,15 @@ COPY . /app
 WORKDIR /app
 
 RUN pytest
-#RUN /bin/bash
 
-#FROM base as final
+FROM base as final
 
 # Enable unbuffered logging
-#ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1
 # Enable Profiler
-#ENV ENABLE_PROFILER=1
+ENV ENABLE_PROFILER=1
 
-#COPY --from=tester /usr/local/lib/python3.9/ /usr/local/lib/python3.9/
-#COPY --from=tester /app /app
+COPY --from=tester /usr/local/lib/python3.9/ /usr/local/lib/python3.9/
+COPY --from=tester /app /app
 
-#WORKDIR /app
+WORKDIR /app
