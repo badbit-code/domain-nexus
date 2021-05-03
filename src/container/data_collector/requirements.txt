@@ -11,3 +11,4 @@ psycopg2==2.8.6
 flask==1.1.2
 pytest
 pytest-cov
+schedule==1.1.0
