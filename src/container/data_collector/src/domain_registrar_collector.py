@@ -1,3 +1,8 @@
+import pandas as pd
+import requests
+from io import StringIO
+from datetime import datetime
+
 class DomainRegistrarCollector:
     """
     Base class for a collector object that gathers domain data from a domain registrar's
@@ -171,25 +176,49 @@ class GoDaddyCollector(DomainRegistrarCollector):
 
 
 class SedoCollector(DomainRegistrarCollector):
-    def map_to_internal_schema(self) -> [dict]:
-        from datetime import datetime
 
-        return [
-            {
-                "name": domain["domainName"].split(".")[0],
-                "tld": domain["domainName"].split(".")[1],
-                "registrar": 2,
-                "expired": datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
-                "registered": datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
-            }
-            for domain in self.pending_domains
-        ]
+    def fetch_data(self) -> StringIO:
+        sedo_url = "https://sedo.com/fileadmin/documents/resources/expiring_domain_auctions.csv"
+        response = requests.get(sedo_url)
+        return StringIO(response.content.decode("utf-16"))
 
-    def gather(self):
+    def preprocess_data(self, sedo_csv) -> pd.DataFrame:
+        sedo_df = pd.read_csv(sedo_csv, delimiter=';', encoding='utf-16', skiprows=1)
+        
+        # We don't need the links for each domain
+        sedo_df.drop(['Link'], axis=1, inplace=True)
+        # tld is removed from domain name since it's stored seperately
+        sedo_df['Domain Name'] = sedo_df['Domain Name'].apply(lambda x: x.split('.')[0])
+        # rename columns to match db column names
+        sedo_df.rename(columns={"Domain Name": "name",
+                                  "Start Time":"start_time",
+                                  "End Time":"end_time",
+                                  "Reserve Price":"reserve_price",
+                                  "Domain is IDN": "domain_is_idn",
+                                  "Domain has hyphen": "domain_has_hyphen",
+                                  "Domain has numbers": "domain_has_numbers",
+                                  "Domain Length": "domain_length",
+                                  "TLD": "tld",
+                                  "Traffic": "traffic"})
 
-        import pandas as pd
+        return sedo_df
 
-        sedo_df = pd.read_csv(
-            "https://sedo.com/fileadmin/documents/resources/expiring_domain_auctions.csv"
-        )
-        print(sedo_df.head())
+
+
+
+
+CREATE TABLE IF NOT EXISTS sedo_meta (
+    id                      bigserial       PRIMARY KEY, 
+    domain_id               UUID            references domains(id),
+    start_time              TIMESTAMP,
+    end_time                TIMESTAMP,
+    reserve_price           money,
+    domain_is_IDN           bool,
+    domain_has_hyphen       bool,
+    domain_has_numbers      bool,
+    domain_length           SMALLINT,
+    tld                     VARCHAR(63),
+    traffic                 SMALLINT,     
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
