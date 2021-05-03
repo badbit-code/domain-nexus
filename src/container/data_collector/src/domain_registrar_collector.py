@@ -2,6 +2,7 @@ import pandas as pd
 import requests
 from io import StringIO
 from datetime import datetime
+from psycopg2.extras import RealDictCursor, execute_values
 
 class DomainRegistrarCollector:
     """
@@ -42,7 +43,7 @@ class DomainRegistrarCollector:
 
         from io import StringIO
 
-        from psycopg2.extras import RealDictCursor, execute_values
+        
 
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -106,6 +107,26 @@ class DomainRegistrarCollector:
 
             self.pending_domains.clear()
 
+    def query_tld(self, conn, tld_names: set[str]) -> dict[str, int]:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        sql = cursor.mogrify(
+                    """WITH ins AS (
+                        INSERT INTO top_level_domain (name) 
+                        VALUES {}   
+                        ON CONFLICT (name) DO UPDATE
+                        SET name = NULL
+                        WHERE FALSE -- never executed, but locks the row
+                        RETURNING id, name
+                        )
+                        SELECT id, name FROM ins
+                        UNION ALL
+                        SELECT id, name from top_level_domain
+                        WHERE name IN ({}) -- only executed if not insert
+                    """.format(", ".join(["%s"] * len(tld_names)), ", ".join(["%s"] * len(tld_names))),
+                        tuple(tld_names),
+                        )
+        cursor.execute(sql)
+        return {k:v for d in cursor.fetch_all() for k, v in d.items()}
 
 class GoDaddyCollector(DomainRegistrarCollector):
     def map_to_internal_schema(self) -> [dict]:
@@ -176,7 +197,6 @@ class GoDaddyCollector(DomainRegistrarCollector):
 
 
 class SedoCollector(DomainRegistrarCollector):
-
     def fetch_data(self) -> StringIO:
         sedo_url = "https://sedo.com/fileadmin/documents/resources/expiring_domain_auctions.csv"
         response = requests.get(sedo_url)
@@ -205,20 +225,3 @@ class SedoCollector(DomainRegistrarCollector):
 
 
 
-
-
-CREATE TABLE IF NOT EXISTS sedo_meta (
-    id                      bigserial       PRIMARY KEY, 
-    domain_id               UUID            references domains(id),
-    start_time              TIMESTAMP,
-    end_time                TIMESTAMP,
-    reserve_price           money,
-    domain_is_IDN           bool,
-    domain_has_hyphen       bool,
-    domain_has_numbers      bool,
-    domain_length           SMALLINT,
-    tld                     VARCHAR(63),
-    traffic                 SMALLINT,     
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);

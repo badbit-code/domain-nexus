@@ -16,6 +16,20 @@ RETURNS trigger AS $$
      END;
  $$ LANGUAGE plpgsql;
 
+ CREATE TABLE IF NOT EXISTS top_level_domain (
+    id                      SMALLINT       PRIMARY KEY, 
+    name                    VARCHAR(63),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS registrar (
+    id                      SMALLINT       PRIMARY KEY, 
+    name                    VARCHAR(63),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS  domains (
     id              UUID            PRIMARY KEY,
     name            VARCHAR (256)   NOT NULL,
@@ -62,21 +76,6 @@ CREATE TABLE IF NOT EXISTS sedo_meta (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-CREATE TABLE IF NOT EXISTS top_level_domain (
-    id                      SMALLINT       PRIMARY KEY, 
-    name                    VARCHAR(63),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS registrar (
-    id                      SMALLINT       PRIMARY KEY, 
-    name                    VARCHAR(63),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
 
 
 CREATE TRIGGER set_timestamp 
