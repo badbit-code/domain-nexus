@@ -19,8 +19,8 @@ RETURNS trigger AS $$
 CREATE TABLE IF NOT EXISTS  domains (
     id              UUID            PRIMARY KEY,
     name            VARCHAR (256)   NOT NULL,
-    tld             VARCHAR( 63 )   NOT NULL, /* TODO map to tld table*/ 
-    registrar       int             NOT NULL, /* TODO map to registrar table*/
+    tld             SMALLINT        NOT NULL references top_level_domain(id), /* TODO map to tld table*/ 
+    registrar       int             NOT NULL references registrar(id), /* TODO map to registrar table*/
     expired         timestamp       DEFAULT NULL,
     registered      timestamp       DEFAULT NULL,
     HAS_WIKI        boolean         DEFAULT NULL,
@@ -50,19 +50,34 @@ CREATE TABLE IF NOT EXISTS goddady_meta (
 CREATE TABLE IF NOT EXISTS sedo_meta (
     id                      bigserial       PRIMARY KEY, 
     domain_id               UUID            references domains(id),
-    start_time             TIMESTAMP,
+    start_time              TIMESTAMP,
     end_time                TIMESTAMP,
     reserve_price           money,
     domain_is_IDN           bool,
     domain_has_hyphen       bool,
     domain_has_numbers      bool,
-    domain_length           INT,
+    domain_length           SMALLINT,
     tld                     VARCHAR(63),
-    traffic                 INT,
-    link                    VARCHAR(255),       
+    traffic                 SMALLINT,     
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS top_level_domain (
+    id                      SMALLINT       PRIMARY KEY, 
+    name                    VARCHAR(63),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS registrar (
+    id                      SMALLINT       PRIMARY KEY, 
+    name                    VARCHAR(63),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+
 
 CREATE TRIGGER set_timestamp 
 BEFORE UPDATE ON domains
