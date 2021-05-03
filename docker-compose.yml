@@ -5,7 +5,7 @@ services:
     env_file:
       - ./.env # configure postgres
     ports:
-      - "5432:5432"
+      - "65056:5432"
     volumes:
       #- database-data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
       - ./src/container/postgresql:/docker-entrypoint-initdb.d
@@ -13,6 +13,13 @@ services:
   collector:
     build:
       context: ./src/container/data_collector
+      network: host
+      args:
+        - POSTGRES_USER=$POSTGRES_USER
+        - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+        - POSTGRES_DB=$POSTGRES_DB
+    env_file:
+      - ./.env # configure postgres
 
 volumes:
   database-data: # named volumes can be managed easier using docker-compose

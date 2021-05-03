@@ -3,6 +3,8 @@ import requests
 from io import StringIO
 from datetime import datetime
 from psycopg2.extras import RealDictCursor, execute_values
+from psycopg2 import DatabaseError
+import numpy as np
 
 class DomainRegistrarCollector:
     """
@@ -107,26 +109,34 @@ class DomainRegistrarCollector:
 
             self.pending_domains.clear()
 
-    def query_tld(self, conn, tld_names: set[str]) -> dict[str, int]:
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        sql = cursor.mogrify(
-                    """WITH ins AS (
-                        INSERT INTO top_level_domain (name) 
-                        VALUES {}   
-                        ON CONFLICT (name) DO UPDATE
-                        SET name = NULL
-                        WHERE FALSE -- never executed, but locks the row
-                        RETURNING id, name
-                        )
-                        SELECT id, name FROM ins
-                        UNION ALL
-                        SELECT id, name from top_level_domain
-                        WHERE name IN ({}) -- only executed if not insert
-                    """.format(", ".join(["%s"] * len(tld_names)), ", ".join(["%s"] * len(tld_names))),
-                        tuple(tld_names),
-                        )
-        cursor.execute(sql)
-        return {k:v for d in cursor.fetch_all() for k, v in d.items()}
+    
+    def execute_values(self, conn, df, table):
+        """
+        Using psycopg2.extras.execute_values() to insert the dataframe
+        """
+        # Create a list of tupples from the dataframe values
+        tuples = [tuple(x) for x in df.to_numpy()]
+        # Comma-separated dataframe columns
+        cols = ','.join(list(df.columns))
+        # SQL quert to execute
+        query  = "INSERT INTO %s(%s) VALUES %%s" % (table, cols)
+        cursor = conn.cursor()
+        #try:
+        execute_values(cursor, query, tuples)
+        conn.commit()
+        #except (Exception, DatabaseError) as error:
+        #    print("Error: %s" % error)
+        #    conn.rollback()
+        #    cursor.close()
+        #    return 1
+        print("execute_values() done")
+        cursor.close()
+
+    def update_tld(self, conn, tld_names: np.ndarray):
+        tld_df = pd.DataFrame(tld_names, columns =['name'])
+
+        self.execute_values(conn, tld_df, "top_level_domain")
+
 
 class GoDaddyCollector(DomainRegistrarCollector):
     def map_to_internal_schema(self) -> [dict]:
@@ -219,7 +229,7 @@ class SedoCollector(DomainRegistrarCollector):
                                   "Domain has numbers": "domain_has_numbers",
                                   "Domain Length": "domain_length",
                                   "TLD": "tld",
-                                  "Traffic": "traffic"})
+                                  "Traffic": "traffic"}, inplace=True)
 
         return sedo_df
 

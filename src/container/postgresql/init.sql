@@ -17,14 +17,14 @@ RETURNS trigger AS $$
  $$ LANGUAGE plpgsql;
 
  CREATE TABLE IF NOT EXISTS top_level_domain (
-    id                      SMALLINT       PRIMARY KEY, 
+    id                      SERIAL       PRIMARY KEY, 
     name                    VARCHAR(63),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS registrar (
-    id                      SMALLINT       PRIMARY KEY, 
+    id                      SERIAL       PRIMARY KEY, 
     name                    VARCHAR(63),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
