@@ -110,19 +110,20 @@ class DomainRegistrarCollector:
             self.pending_domains.clear()
 
     
-    def execute_values(self, conn, df, table):
+    def insert_new_domains(self, conn, df: pd.DataFrame):
         """
         Using psycopg2.extras.execute_values() to insert the dataframe
         """
         # Create a list of tupples from the dataframe values
         tuples = [tuple(x) for x in df.to_numpy()]
-        # Comma-separated dataframe columns
-        cols = ','.join(list(df.columns))
-        # SQL quert to execute
-        query  = "INSERT INTO %s(%s) VALUES %%s" % (table, cols)
         cursor = conn.cursor()
+        values = [cursor.mogrify("""(%s, (SELECT id FROM top_level_domain WHERE name = %s), (SELECT id FROM registrar WHERE name = %s))""", tup).decode('utf8') for tup in tuples]
+        # SQL quert to execute
+        query  = """INSERT INTO domain (name, tld, registrar) 
+                    VALUES """ + ",".join(values)
+        
         #try:
-        execute_values(cursor, query, tuples)
+        cursor.execute(query, tuples)
         conn.commit()
         #except (Exception, DatabaseError) as error:
         #    print("Error: %s" % error)
@@ -132,10 +133,69 @@ class DomainRegistrarCollector:
         print("execute_values() done")
         cursor.close()
 
-    def update_tld(self, conn, tld_names: np.ndarray):
-        tld_df = pd.DataFrame(tld_names, columns =['name'])
+    def insert_new_tlds(self, conn, tld_names: np.ndarray):        
+        """
+        Using cursor.mogrify() to build the bulk insert query
+        then cursor.execute() to execute the query
+        """
+        # SQL quert to execute
+        cursor = conn.cursor()
+        values = [cursor.mogrify("(%s)", (tld,)).decode('utf8') for tld in tld_names]
+        query = f"""INSERT INTO top_level_domain (name) 
+                    SELECT 
+                    NewTLD.name 
+                    FROM 
+                    (
+                        VALUES 
+                        {",".join(values)}
+                    ) AS NewTLD (name) 
+                    WHERE 
+                    NOT EXISTS (
+                        SELECT 
+                        1 
+                        FROM 
+                        top_level_domain AS TLD 
+                        WHERE 
+                        TLD.name = NewTLD.name
+                    )"""
+        try:
+            cursor.execute(query, (tuple(tld_names),))
+            conn.commit()
+        except (Exception, DatabaseError) as error:
+            print("Error: %s" % error)
+            conn.rollback()
+            cursor.close()
+            return 1
+        print("update_tld() done")
+        cursor.close()
 
-        self.execute_values(conn, tld_df, "top_level_domain")
+
+    def update_domain(self, conn, df: pd.DataFrame):
+        query = """INSERT INTO top_level_domain (name, tld, registrar) 
+                    VALUES 
+                    (
+                        %s, 
+                        (
+                        SELECT 
+                            id 
+                        FROM 
+                            tld 
+                        WHERE 
+                            name = %s
+                        ), 
+                        (
+                        SELECT 
+                            id 
+                        FROM 
+                            registrar 
+                        WHERE 
+                            name = %s
+                        )
+                    )"""
+        cursor = conn.cursor()
+        #try:
+        execute_values(cursor, query, tuples)
+        conn.commit()
 
 
 class GoDaddyCollector(DomainRegistrarCollector):
@@ -230,8 +290,14 @@ class SedoCollector(DomainRegistrarCollector):
                                   "Domain Length": "domain_length",
                                   "TLD": "tld",
                                   "Traffic": "traffic"}, inplace=True)
+        sedo_df["registrar"] = "sedo"
 
         return sedo_df
+
+    def update_registrar(self, conn):
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO registrar (name) VALUES ('sedo') ON CONFLICT DO NOTHING")
+        conn.commit()
 
 
 

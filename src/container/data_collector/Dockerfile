@@ -30,7 +30,7 @@ ENV POSTGRES_DB=${POSTGRES_DB}
 COPY . /app
 WORKDIR /app
 
-RUN pytest
+RUN ["pytest", "-s"]
 
 FROM base as final
 

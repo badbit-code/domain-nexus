@@ -17,4 +17,6 @@ def test_query_tld():
         password=os.getenv("POSTGRES_PASSWORD"),
         port=os.getenv("DB_PORT", 65056),
     )
-    sedo_collector.update_tld(conn, sedo_df["tld"].unique())
+    sedo_collector.insert_new_tlds(conn, sedo_df["tld"].unique())
+    sedo_collector.update_registrar(conn)
+    sedo_collector.insert_new_domains(conn, sedo_df[["name","tld","registrar"]])
