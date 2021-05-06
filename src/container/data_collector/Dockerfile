@@ -1,6 +1,7 @@
 FROM python:3.9.4-slim as base
 
-FROM base as builder
+FROM base as final
+
 
 RUN apt-get -qq update \
     && apt-get install -y --no-install-recommends \
@@ -8,11 +9,12 @@ RUN apt-get -qq update \
         libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ./requirements.txt .
+COPY ./requirements.txt ./
 
-RUN pip install -r requirements.txt
+RUN python -m pip install -r requirements.txt
+WORKDIR /app
 
-FROM builder as tester
+#FROM builder as tester
 
 # Enable unbuffered logging
 ENV PYTHONUNBUFFERED=1

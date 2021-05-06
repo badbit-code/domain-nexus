@@ -7,8 +7,8 @@ services:
     ports:
       - "65056:5432"
     volumes:
-      #- database-data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
-      - ./src/container/postgresql:/docker-entrypoint-initdb.d
+      # - database_data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
+      - ./src/container/postgresql/:/docker-entrypoint-initdb.d
 
   collector:
     build:
@@ -21,5 +21,45 @@ services:
     env_file:
       - ./.env # configure postgres
 
+    #ports:
+    #   - "127.0.0.1:5432:65056"
+    #entrypoint: bash -c "/bin/bash"
+    #volumes:
+    #  #- database-data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
+    #  - ./init-scripts:/docker-entrypoint-initdb.d
+
+  alex-meta-collector:
+    build:
+      context: ./src/container/meta_collectors/
+      dockerfile: ./alexa/Dockerfile
+    env_file:
+        - ./.env
+
+  whois-meta-collector:
+    build:
+      context: ./src/container/meta_collectors/
+      dockerfile: ./whois/Dockerfile
+    env_file:
+        - ./.env
+
+  wiki-meta-collector:
+    build:
+      context: ./src/container/meta_collectors/
+      dockerfile: ./wiki/Dockerfile
+    env_file:
+        - ./.env
+
+  public_api:
+    build:
+      context: ./src/container/public_api
+    env_file:
+      - ./.env # configure postgres
+    ports:
+      - "127.0.0.1:8050:5432"
+    entrypoint: bash -c "/bin/bash"
+    volumes:
+      #- database-data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d
 volumes:
-  database-data: # named volumes can be managed easier using docker-compose
+  database_data: # named volumes can be managed easier using docker-compose
+    driver: local

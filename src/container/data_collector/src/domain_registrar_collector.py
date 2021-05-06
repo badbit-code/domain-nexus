@@ -1,5 +1,5 @@
-import pandas as pd
-import requests
+#import pandas as pd
+#import requests
 from io import StringIO
 from datetime import datetime
 from psycopg2.extras import RealDictCursor, execute_values
@@ -16,6 +16,8 @@ class DomainRegistrarCollector:
     def __init__(self):
 
         self.pending_domains = []
+        self.tld = {}
+        self.registrar = {}
 
     def gather(self):
         """
@@ -40,6 +42,57 @@ class DomainRegistrarCollector:
         """
         return []
 
+    def get_tld_mapping(self, tld:str, conn):
+
+        if tld not in self.tld:
+            
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            try:
+                cursor.execute(f"INSERT INTO top_level_domain(name) VALUES ('{tld}')")    
+            
+                conn.commit()
+            except:
+                conn.rollback()
+                pass
+
+            cursor.execute(f"SELECT name,id FROM top_level_domain")
+
+            result = cursor.fetchall()
+            
+            print(result)
+
+            self.tld = { row["name"]:row["id"] for row in result}
+
+            print(self.tld)
+
+        return self.tld[tld]
+
+    def get_registrar_mapping(self, registrar:str, conn):
+
+        if registrar not in self.registrar:
+            
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            try:
+                cursor.execute(f"INSERT INTO registrar(name) VALUES ('{registrar}')")    
+            
+                conn.commit()
+            except:
+                conn.rollback()
+                pass
+
+            cursor.execute(f"SELECT name,id FROM registrar")
+
+            result = cursor.fetchall()
+            
+            print(result)
+
+            self.registrar = { row["name"]:row["id"] for row in result}
+
+            print(self.registrar)
+
+        return self.registrar[registrar]
+
+
     def upload_to_db(self, conn):
 
         import math
@@ -48,7 +101,7 @@ class DomainRegistrarCollector:
 
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        new_domains = self.map_to_internal_schema()
+        new_domains = self.map_to_internal_schema(conn)
 
         if len(new_domains) > 0:
 
@@ -62,10 +115,10 @@ class DomainRegistrarCollector:
                 """
                 CREATE TEMPORARY TABLE temp_domains(
                     name text,
-                    tld text,
+                    tld int,
                     registrar int,
-                    expired timestampz,
-                    registered timestampz
+                    expired timestamp,
+                    registered timestamp
                 )
             """
             )
@@ -175,14 +228,14 @@ class DomainRegistrarCollector:
 
 
 class GoDaddyCollector(DomainRegistrarCollector):
-    def map_to_internal_schema(self) -> [dict]:
+    def map_to_internal_schema(self, conn) -> [dict]:
         from datetime import datetime
 
         return [
             {
                 "name": domain["domainName"].split(".")[0],
-                "tld": domain["domainName"].split(".")[1],
-                "registrar": 1,
+                "tld": self.get_tld_mapping(domain["domainName"].split(".")[1], conn),
+                "registrar": self.get_registrar_mapping("godaddy", conn),
                 "expired": datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
                 "registered": datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
             }
