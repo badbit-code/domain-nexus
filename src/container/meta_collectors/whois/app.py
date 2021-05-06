@@ -10,19 +10,19 @@ class WhoisMetaGatherer(AsyncMetaAPIGatherer):
             self,
             conn,
             get_batch_query = """
-                SELECT domains.name as domain, top_level_domain.name as tld, domains.id as id
-                FROM domains, top_level_domain 
-                WHERE (domains.registered < timestamp '1980-01-01 00:00:00' OR domains.expired < timestamp '1980-01-01 00:00:00')
-                AND top_level_domain.id = domains.tld
-                ORDER BY domains.updated_at 
+                SELECT domain.name as domain, top_level_domain.name as tld, domain.id as id
+                FROM domain, top_level_domain 
+                WHERE (domain.registered < timestamp '1980-01-01 00:00:00' OR domain.expired < timestamp '1980-01-01 00:00:00')
+                AND top_level_domain.id = domain.tld
+                ORDER BY domain.updated_at 
                 LIMIT 500
                 OFFSET 0;""",
 
             update_batch_query = """
-                UPDATE domains
+                UPDATE domain
                 SET registered = temp.registered, expired = temp.expired
                 FROM (VALUES %s) AS temp(registered, expired, domain_id)
-                WHERE domains.id = uuid(domain_id)
+                WHERE domain.id = uuid(domain_id)
                 """,
             USE_THREADS = True
         )

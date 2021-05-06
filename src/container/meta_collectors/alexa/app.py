@@ -16,19 +16,19 @@ class AlexaMetaGatherer(AsyncMetaAPIGatherer):
             self,
             conn,
             get_batch_query = """
-                SELECT domains.name as domain, top_level_domain.name as tld, domains.tld as tld_id
-                FROM domains, top_level_domain 
-                WHERE domains.alexa_score is NULL 
-                AND top_level_domain.id = domains.tld
-                ORDER BY domains.updated_at 
+                SELECT domain.name as domain, top_level_domain.name as tld, domain.tld as tld_id
+                FROM domain, top_level_domain 
+                WHERE domain.alexa_score is NULL 
+                AND top_level_domain.id = domain.tld
+                ORDER BY domain.updated_at 
                 LIMIT 500
                 OFFSET 0;""",
 
             update_batch_query = """
-                UPDATE domains
+                UPDATE domain
                 SET alexa_score = temp.score
                 FROM (VALUES %s) AS temp(score, domain, tld)
-                WHERE domains.id = uuid_generate_v3(uuid_ns_url(), temp.domain || '.' || temp.tld)
+                WHERE domain.id = uuid_generate_v3(uuid_ns_url(), temp.domain || '.' || temp.tld)
                 """
         )
 
