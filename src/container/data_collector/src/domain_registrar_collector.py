@@ -1,9 +1,10 @@
-#import pandas as pd
-#import requests
+import pandas as pd
+import requests
 from io import StringIO
 from datetime import datetime
-from psycopg2 import connect
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, execute_values
+from psycopg2 import DatabaseError
+import numpy as np
 
 class DomainRegistrarCollector:
     """
@@ -14,8 +15,6 @@ class DomainRegistrarCollector:
     def __init__(self):
 
         self.pending_domains = []
-        self.tld = {}
-        self.registrar = {}
 
     def gather(self):
         """
@@ -40,68 +39,17 @@ class DomainRegistrarCollector:
         """
         return []
 
-    def get_tld_mapping(self, tld:str, conn):
-
-        if tld not in self.tld:
-            
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            try:
-                cursor.execute(f"INSERT INTO top_level_domain(name) VALUES ('{tld}')")    
-            
-                conn.commit()
-            except:
-                conn.rollback()
-                pass
-
-            cursor.execute(f"SELECT name,id FROM top_level_domain")
-
-            result = cursor.fetchall()
-            
-            print(result)
-
-            self.tld = { row["name"]:row["id"] for row in result}
-
-            print(self.tld)
-
-        return self.tld[tld]
-
-    def get_registrar_mapping(self, registrar:str, conn):
-
-        if registrar not in self.registrar:
-            
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            try:
-                cursor.execute(f"INSERT INTO registrar(name) VALUES ('{registrar}')")    
-            
-                conn.commit()
-            except:
-                conn.rollback()
-                pass
-
-            cursor.execute(f"SELECT name,id FROM registrar")
-
-            result = cursor.fetchall()
-            
-            print(result)
-
-            self.registrar = { row["name"]:row["id"] for row in result}
-
-            print(self.registrar)
-
-        return self.registrar[registrar]
-
-
     def upload_to_db(self, conn):
 
         import math
 
         from io import StringIO
 
-        from psycopg2.extras import RealDictCursor, execute_values
+        
 
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        new_domains = self.map_to_internal_schema(conn)
+        new_domains = self.map_to_internal_schema()
 
         if len(new_domains) > 0:
 
@@ -115,10 +63,10 @@ class DomainRegistrarCollector:
                 """
                 CREATE TEMPORARY TABLE temp_domains(
                     name text,
-                    tld int,
+                    tld text,
                     registrar int,
-                    expired timestamp,
-                    registered timestamp
+                    expired timestampz,
+                    registered timestampz
                 )
             """
             )
@@ -161,16 +109,104 @@ class DomainRegistrarCollector:
 
             self.pending_domains.clear()
 
+    
+    def insert_new_domains(self, conn, df: pd.DataFrame):
+        """
+        Using psycopg2.extras.execute_values() to insert the dataframe
+        """
+        # Create a list of tupples from the dataframe values
+        tuples = [tuple(x) for x in df.to_numpy()]
+        cursor = conn.cursor()
+        values = [cursor.mogrify("""(%s, (SELECT id FROM top_level_domain WHERE name = %s), (SELECT id FROM registrar WHERE name = %s))""", tup).decode('utf8') for tup in tuples]
+        # SQL quert to execute
+        query  = """INSERT INTO domain (name, tld, registrar) 
+                    VALUES """ + ",".join(values)
+        
+        #try:
+        cursor.execute(query, tuples)
+        conn.commit()
+        #except (Exception, DatabaseError) as error:
+        #    print("Error: %s" % error)
+        #    conn.rollback()
+        #    cursor.close()
+        #    return 1
+        print("execute_values() done")
+        cursor.close()
+
+    def insert_new_tlds(self, conn, tld_names: np.ndarray):        
+        """
+        Using cursor.mogrify() to build the bulk insert query
+        then cursor.execute() to execute the query
+        """
+        # SQL quert to execute
+        cursor = conn.cursor()
+        values = [cursor.mogrify("(%s)", (tld,)).decode('utf8') for tld in tld_names]
+        query = f"""INSERT INTO top_level_domain (name) 
+                    SELECT 
+                    NewTLD.name 
+                    FROM 
+                    (
+                        VALUES 
+                        {",".join(values)}
+                    ) AS NewTLD (name) 
+                    WHERE 
+                    NOT EXISTS (
+                        SELECT 
+                        1 
+                        FROM 
+                        top_level_domain AS TLD 
+                        WHERE 
+                        TLD.name = NewTLD.name
+                    )"""
+        try:
+            cursor.execute(query, (tuple(tld_names),))
+            conn.commit()
+        except (Exception, DatabaseError) as error:
+            print("Error: %s" % error)
+            conn.rollback()
+            cursor.close()
+            return 1
+        print("update_tld() done")
+        cursor.close()
+
+
+    def update_domain(self, conn, df: pd.DataFrame):
+        query = """INSERT INTO top_level_domain (name, tld, registrar) 
+                    VALUES 
+                    (
+                        %s, 
+                        (
+                        SELECT 
+                            id 
+                        FROM 
+                            tld 
+                        WHERE 
+                            name = %s
+                        ), 
+                        (
+                        SELECT 
+                            id 
+                        FROM 
+                            registrar 
+                        WHERE 
+                            name = %s
+                        )
+                    )"""
+        cursor = conn.cursor()
+        #try:
+        execute_values(cursor, query, tuples)
+        conn.commit()
+
 
 class GoDaddyCollector(DomainRegistrarCollector):
-    def map_to_internal_schema(self, conn) -> [dict]:
+    def map_to_internal_schema(self) -> [dict]:
         from datetime import datetime
 
         return [
             {
                 "name": domain["domainName"].split(".")[0],
-                "tld": self.get_tld_mapping(domain["domainName"].split(".")[1], conn),
-                "registrar": self.get_registrar_mapping("godaddy", conn),
+                "tld": domain["domainName"].split(".")[1],
+                "registrar": 1,
                 "expired": datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
                 "registered": datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
             }
@@ -228,33 +264,40 @@ class GoDaddyCollector(DomainRegistrarCollector):
                             json_data = json.loads(json_contents.read().decode("utf-8"))
 
                             self.pending_domains.extend(json_data["data"])
-                break;
 
 
-#class SedoCollector(DomainRegistrarCollector):
-#
-#    def fetch_data(self) -> StringIO:
-#        sedo_url = "https://sedo.com/fileadmin/documents/resources/expiring_domain_auctions.csv"
-#        response = requests.get(sedo_url)
-#        return StringIO(response.content.decode("utf-16"))
-#
-#    def preprocess_data(self, sedo_csv) -> pd.DataFrame:
-#        sedo_df = pd.read_csv(sedo_csv, delimiter=';', encoding='utf-16', skiprows=1)
-#        
-#        # We don't need the links for each domain
-#        sedo_df.drop(['Link'], axis=1, inplace=True)
-#        # tld is removed from domain name since it's stored seperately
-#        sedo_df['Domain Name'] = sedo_df['Domain Name'].apply(lambda x: x.split('.')[0])
-#        # rename columns to match db column names
-#        sedo_df.rename(columns={"Domain Name": "name",
-#                                  "Start Time":"start_time",
-#                                  "End Time":"end_time",
-#                                  "Reserve Price":"reserve_price",
-#                                  "Domain is IDN": "domain_is_idn",
-#                                  "Domain has hyphen": "domain_has_hyphen",
-#                                  "Domain has numbers": "domain_has_numbers",
-#                                  "Domain Length": "domain_length",
-#                                  "TLD": "tld",
-#                                  "Traffic": "traffic"})
-#
-#        return sedo_df
+class SedoCollector(DomainRegistrarCollector):
+    def fetch_data(self) -> StringIO:
+        sedo_url = "https://sedo.com/fileadmin/documents/resources/expiring_domain_auctions.csv"
+        response = requests.get(sedo_url)
+        return StringIO(response.content.decode("utf-16"))
+
+    def preprocess_data(self, sedo_csv) -> pd.DataFrame:
+        sedo_df = pd.read_csv(sedo_csv, delimiter=';', encoding='utf-16', skiprows=1)
+        
+        # We don't need the links for each domain
+        sedo_df.drop(['Link'], axis=1, inplace=True)
+        # tld is removed from domain name since it's stored seperately
+        sedo_df['Domain Name'] = sedo_df['Domain Name'].apply(lambda x: x.split('.')[0])
+        # rename columns to match db column names
+        sedo_df.rename(columns={"Domain Name": "name",
+                                  "Start Time":"start_time",
+                                  "End Time":"end_time",
+                                  "Reserve Price":"reserve_price",
+                                  "Domain is IDN": "domain_is_idn",
+                                  "Domain has hyphen": "domain_has_hyphen",
+                                  "Domain has numbers": "domain_has_numbers",
+                                  "Domain Length": "domain_length",
+                                  "TLD": "tld",
+                                  "Traffic": "traffic"}, inplace=True)
+        sedo_df["registrar"] = "sedo"
+
+        return sedo_df
+
+    def update_registrar(self, conn):
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO registrar (name) VALUES ('sedo') ON CONFLICT DO NOTHING")
+        conn.commit()
+
+
+

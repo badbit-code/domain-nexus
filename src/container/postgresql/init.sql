@@ -1,99 +1,94 @@
 CREATE EXTENSION "uuid-ossp";
 
-CREATE OR REPLACE FUNCTION trigger_set_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated = NOW();
-  RETURN NEW;
+CREATE
+OR REPLACE FUNCTION trigger_set_timestamp() RETURNS TRIGGER AS $$ BEGIN NEW.updated = NOW();
+RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION generate_domain_uuid()
-RETURNS trigger AS $$
-     BEGIN
-         NEW.id := uuid_generate_v3(uuid_ns_url(), NEW.name || '.' || NEW.tld );
-         RETURN NEW;
-     END;
- $$ LANGUAGE plpgsql;
-
-CREATE TABLE IF NOT EXISTS  domains (
-    id              UUID            PRIMARY KEY,
-    name            VARCHAR (256)   NOT NULL,
-    tld             SMALLINT        NOT NULL references top_level_domain(id), /* TODO map to tld table*/ 
-    registrar       int             NOT NULL references registrar(id), /* TODO map to registrar table*/
-    expired         timestamp       DEFAULT NULL,
-    registered      timestamp       DEFAULT NULL,
-    HAS_WIKI        boolean         DEFAULT NULL,
-    alexa_score     int             DEFAULT NULL,
-    branding_score  int             DEFAULT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE
+OR REPLACE FUNCTION generate_domain_uuid() RETURNS trigger AS $$ BEGIN NEW.id := uuid_generate_v3(
+  uuid_ns_url(),
+  NEW.name || '.' || NEW.tld
 );
-
-CREATE TABLE IF NOT EXISTS goddady_meta (
-    id                      bigserial       PRIMARY KEY, 
-    domain_id               UUID            references domains(id),
-    auctionType             varchar(31),
-    auctionEndTime          timestamptz, 
-    price                   money, 
-    numberOfBids            int, 
-    domainAge               int,
-    description             text, 
-    pageviews               int, 
-    valuation               money, 
-    monthlyParkingRevenue   money,
-    isAdult                 bool,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS sedo_meta (
-    id                      bigserial       PRIMARY KEY, 
-    domain_id               UUID            references domains(id),
-    start_time              TIMESTAMP,
-    end_time                TIMESTAMP,
-    reserve_price           money,
-    domain_is_IDN           bool,
-    domain_has_hyphen       bool,
-    domain_has_numbers      bool,
-    domain_length           SMALLINT,
-    tld                     VARCHAR(63),
-    traffic                 SMALLINT,     
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE TABLE IF NOT EXISTS top_level_domain (
-    id                      SMALLINT       PRIMARY KEY, 
-    name                    VARCHAR(63),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(63) NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS registrar (
-    id                      SMALLINT       PRIMARY KEY, 
-    name                    VARCHAR(63),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(63) NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS domain (
+  id UUID PRIMARY KEY,
+  name VARCHAR(256) NOT NULL,
+  tld SMALLINT NOT NULL REFERENCES top_level_domain(id),
+  registrar SMALLINT NOT NULL REFERENCES registrar(id),
+  expired TIMESTAMP DEFAULT NULL,
+  registered TIMESTAMP DEFAULT NULL,
+  HAS_WIKI BOOLEAN DEFAULT NULL,
+  alexa_score INT DEFAULT NULL,
+  branding_score INT DEFAULT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
+CREATE TABLE IF NOT EXISTS goddady_meta (
+  id BIGSERIAL PRIMARY KEY,
+  domain_id UUID REFERENCES domain(id),
+  auctionType VARCHAR(31),
+  auctionEndTime TIMESTAMPTZ,
+  price MONEY,
+  numberOfBids INT,
+  domainAge INT,
+  description TEXT,
+  pageviews INT,
+  valuation MONEY,
+  monthlyParkingRevenue MONEY,
+  isAdult BOOLEAN,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-CREATE TRIGGER set_timestamp 
-BEFORE UPDATE ON domains
-FOR EACH ROW 
-EXECUTE PROCEDURE trigger_set_timestamp();
+CREATE TABLE IF NOT EXISTS sedo_meta (
+  id bigserial PRIMARY KEY,
+  domain_id UUID REFERENCES domain(id),
+  start_time TIMESTAMP,
+  end_time TIMESTAMP,
+  reserve_price MONEY,
+  domain_is_IDN BOOLEAN,
+  domain_has_hyphen BOOLEAN,
+  domain_has_numbers BOOLEAN,
+  domain_length SMALLINT,
+  tld VARCHAR(63),
+  traffic SMALLINT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
-CREATE TRIGGER generate_domain_uuid 
-BEFORE INSERT OR UPDATE ON domains 
-FOR EACH ROW EXECUTE PROCEDURE generate_domain_uuid();
+CREATE TRIGGER set_timestamp BEFORE
+UPDATE
+  ON domain FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
-CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON goddady_meta
-FOR EACH ROW
-EXECUTE PROCEDURE trigger_set_timestamp();
+CREATE TRIGGER trigger_generate_domain_uuid BEFORE INSERT
+OR
+UPDATE
+  ON domain FOR EACH ROW EXECUTE PROCEDURE generate_domain_uuid();
 
-CREATE TRIGGER set_timestamp
-BEFORE UPDATE ON sedo_meta
-FOR EACH ROW
-EXECUTE PROCEDURE trigger_set_timestamp();
+CREATE TRIGGER set_timestamp BEFORE
+UPDATE
+  ON goddady_meta FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+
+CREATE TRIGGER set_timestamp BEFORE
+UPDATE
+  ON sedo_meta FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
