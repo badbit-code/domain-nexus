@@ -1,0 +1,22 @@
+name: Build Containers And Deploy To Server
+
+on:
+  push:
+    branches: [deploy]
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy Docker Containers
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{secrets.SSH_HOST}}
+          key: ${{secrets.SSH_KEY}}
+          username: ${{secrets.SSH_USER_NAME}}
+
+          script: |
+            cd /home/github/expired-domains
+            ./deploy.sh
+
