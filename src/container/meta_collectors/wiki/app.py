@@ -9,11 +9,17 @@ class WikiMetaGatherer(AsyncMetaAPIGatherer):
             self,
             conn,
             get_batch_query = """
-                SELECT domain.name as domain, top_level_domain.name as tld, domain.id as id
-                FROM domain, top_level_domain 
-                WHERE domain.HAS_WIKI is NULL 
-                AND top_level_domain.id = domain.tld
-                ORDER BY domain.updated_at 
+                SELECT domain
+                .name as domain, top_level_domain.name as tld, domain
+                .id as id
+                FROM domain
+                , top_level_domain 
+                WHERE domain
+                .HAS_WIKI is NULL 
+                AND top_level_domain.id = domain
+                .tld
+                ORDER BY domain
+                .updated_at 
                 LIMIT 500
                 OFFSET 0;""",
 
@@ -21,7 +27,8 @@ class WikiMetaGatherer(AsyncMetaAPIGatherer):
                 UPDATE domain
                 SET HAS_WIKI = temp.HAS_WIKI
                 FROM (VALUES %s) AS temp(HAS_WIKI, domain_id)
-                WHERE domain.id = uuid(domain_id)
+                WHERE domain
+                .id = uuid(domain_id)
                 """,
             sleep = 1.0
             #USE_THREADS = True
