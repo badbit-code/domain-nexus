@@ -7,26 +7,13 @@ services:
     ports:
       - "65056:5432"
     volumes:
-      # - database_data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
       - ./src/container/postgresql/:/docker-entrypoint-initdb.d
 
   collector:
     build:
       context: ./src/container/data_collector
-      network: host
-      args:
-        - POSTGRES_USER=$POSTGRES_USER
-        - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-        - POSTGRES_DB=$POSTGRES_DB
     env_file:
       - ./.env # configure postgres
-
-    #ports:
-    #   - "127.0.0.1:5432:65056"
-    #entrypoint: bash -c "/bin/bash"
-    #volumes:
-    #  #- database-data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
-    #  - ./init-scripts:/docker-entrypoint-initdb.d
 
   alex-meta-collector:
     build:
@@ -58,8 +45,8 @@ services:
       - "127.0.0.1:8050:5432"
     entrypoint: bash -c "/bin/bash"
     volumes:
-      #- database-data:/var/lib/postgresql/data/ # persist data even if container shuts downvolumes:
       - ./init-scripts:/docker-entrypoint-initdb.d
+
 volumes:
   database_data: # named volumes can be managed easier using docker-compose
     driver: local
