@@ -29,9 +29,78 @@ class DomainRegistrarCollector:
 
         self.pending_domains = []
 
-        self.batch_size = 50000
+        self.batch_files = []
 
-        self.batch_limit = 20
+        self.batch_size = 100000
+
+        self.batch_limit = 5
+
+        self.batch_file_count = 0
+
+    @property 
+    def HAS_PENDING_UPLOADS(self):
+        return len(self.pending_domains) > 0
+    
+    @property 
+    def HAS_PENDING_BATCH_FILES(self):
+        return len(self.batch_files) > 0
+
+    def add_raw_entry(self, entry):
+        
+        self.pending_domains.append(entry)
+
+        if len (self.pending_domains) >= self.batch_size:
+
+            self.create_temp_batch_file()
+
+
+    def create_temp_batch_file(self):
+
+        if self.HAS_PENDING_UPLOADS:
+
+            batch_count = len(self.pending_domains)
+
+            batch = [self.map_to_internal_schema(row) for row in self.pending_domains]
+
+            batch_fn = f"temp_batch_{self.batch_file_count}"
+
+            self.batch_file_count += 1
+
+            with open(batch_fn,"w+") as file:
+
+                file.write(
+                        "\n".join([",".join([str(v) for v in d.values()]) for d in batch])
+                    )
+
+            self.batch_files.append(batch_fn)
+
+            print(f"Created temp file {batch_fn} with {batch_count} pending domain entries")
+
+            self.pending_domains.clear()
+
+
+    def upload_batch_files(self, cursor, max_number_of_files = 500):
+
+        import os
+
+        for batch_fn in self.batch_files[:max_number_of_files]:
+
+            print(f"Uploading {batch_fn}")
+
+            with open(batch_fn,"r") as file:
+
+                cursor.copy_from(
+                    file,
+                    "temp_domains",
+                    sep=",",
+                    columns=("name", "tld", "registrar", "expired", "registered"),
+                )
+            
+            print(f"Clearing and deleting {batch_fn}")
+
+            os.remove(batch_fn)
+
+            self.batch_files.remove(batch_fn)
 
     def gather(self):
         """
@@ -56,25 +125,15 @@ class DomainRegistrarCollector:
         """
         return row
 
-    @property 
-    def HAS_PENDING_UPLOADS(self):
-        return len(self.pending_domains) > 0
-
     def upload_to_domain_table(self, conn):
-
-        import math
-
-        from io import StringIO
-
+        
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        if self.HAS_PENDING_UPLOADS:
+        if self.HAS_PENDING_BATCH_FILES:
 
             start_count = get_row_count("domain", cursor)
 
             print(f"Uploading {len(self.pending_domains)} domain names from Godaddy. Current number of entries is {start_count}")
-
-            batch_size = self.batch_size
 
             print("Creating temporary table")
 
@@ -92,49 +151,11 @@ class DomainRegistrarCollector:
             """
             )
 
-            # Upload prospective domain data to temp table one batch_size at time. 
+            # Make sure any pending batch data is added
+            self.create_temp_batch_file()
 
-            total_uploads = 0
-
-            for batch_id in range(math.ceil(len(self.pending_domains) / batch_size)):
-
-                if batch_id > self.batch_limit:
-
-                    print("Batch upload limit reached")
-
-                    break
-
-                batch = [self.map_to_internal_schema(row) for row in self.pending_domains[:batch_size]]
-
-                self.pending_domains = self.pending_domains[batch_size:]
-
-                actual_batch_size = len(batch)
-
-                total_uploads += actual_batch_size
-
-                print(f"Uploading batch of {actual_batch_size} domains to temporary table")
-
-                data = StringIO()
-
-                data.write(
-                    "\n".join([",".join([str(v) for v in d.values()]) for d in batch])
-                )
-
-                batch = None
-
-                data.seek(0)
-
-                cursor.copy_from(
-                    data,
-                    "temp_domains",
-                    sep=",",
-                    columns=("name", "tld", "registrar", "expired", "registered"),
-                )
-
-                print("Upload complete")
-
-            print(f"Completed upload of batches. {total_uploads} pending domains uploaded")
-
+            self.upload_batch_files(cursor, self.batch_limit)
+            
             # Update registrar table. Get batch of registrar names that do not have corresponding rows in 
             # registrar and create new rows for this batch. Make sure all names are lowercase
             cursor.execute(
@@ -286,6 +307,54 @@ class DomainRegistrarCollector:
         conn.commit()
 
 
+def get_json_object_string_from_pos(file, Prestart = False):
+    OBJECT_START = Prestart
+    buffer = []
+    
+    while True:
+
+        str = file.read(1)
+
+        if str == "":
+            return None
+
+        if OBJECT_START:
+
+            buffer.append(str)
+            
+            if str == "}":    
+                break
+        
+            if str == "{": 
+
+                str = get_json_object_string_from_pos(file, True)
+
+                if str is None:
+                    return None
+
+                buffer.append(str)
+               
+        else:
+            if str == "{":    
+                OBJECT_START = True
+                buffer.append(str)
+    
+    return "".join(buffer)
+
+def get_json_object_from_pos(file):
+    import json
+
+    obj_str = get_json_object_string_from_pos(file)
+
+    if obj_str is None:
+        return None   
+    
+    try:
+        return json.loads(obj_str)
+    except:
+        print(obj_str)
+        return None
+
 class GoDaddyCollector(DomainRegistrarCollector):
 
     def map_to_internal_schema(self, row:dict) -> dict:
@@ -297,24 +366,48 @@ class GoDaddyCollector(DomainRegistrarCollector):
                 "expired": datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
                 "registered": datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
             }
-        
+    
+    def stream_json_file(self, json_file_path):
+
+        print(f"Creating upload batches from {json_file_path}")
+
+        with open(json_file_path, "r", encoding = 'utf-8') as file:
+
+            pos = 0
+
+            file.seek(pos)
+
+            file.tell
+            
+            while True:
+                str = file.read(1)
+
+                if str == "":
+                    break
+                
+                if str == "m" and file.read(3) == "eta":
+                    print("Collecting Meta Information")
+                    meta= get_json_object_from_pos(file)
+                    print(meta)
+
+                if str == "d" and file.read(3) == "ata":
+                    while True:
+                        entry = get_json_object_from_pos(file)
+                        if entry is None:
+                            break
+                        self.add_raw_entry(entry)
 
     def test_gather(self):
 
-        import json
-
-        with open("./all_listings3.json", "r") as file:
-
-            json_data = json.loads(file.read())
-
-            self.pending_domains.extend(json_data["data"])
-
+        self.stream_json_file("./all_listings3.json")
+                        
     def gather(self):
 
         from ftplib import FTP
         from zipfile import ZipFile
         from io import BytesIO
         import json
+        import os
 
         with FTP("ftp.godaddy.com", "auctions") as ftp:
 
@@ -328,23 +421,22 @@ class GoDaddyCollector(DomainRegistrarCollector):
 
                 print(f"Downloading {file_name}")
 
-                with BytesIO() as tempfile:
+                with open("tmp", "w+b") as tempfile:
 
                     ftp.retrbinary(f"RETR {file_name}", tempfile.write)
 
-                    with ZipFile(tempfile) as zip_:
+                    print("Completed download")
 
-                        file_to_extract = file_name.rsplit(".", 1)[0]
+                    file_to_extract = file_name.rsplit(".", 1)[0]
 
-                        with zip_.open(file_to_extract) as json_contents:
+                    ZipFile(tempfile) .extract(file_to_extract)
+                    
+                    print(f"Extracted {file_to_extract}")
 
-                            file_to_extract = file_name.rsplit(".", 1)[0]
-
-                            json_data = json.loads(json_contents.read().decode("utf-8"))
-
-                            print(f"{file_name} contains {len(json_data['data'])} entries")
-
-                            self.pending_domains.extend(json_data["data"])
+                    self.stream_json_file(file_to_extract)
+                
+                # Clear temp file contents
+                open("tmp", "w").close()
 
 
 class SedoCollector(DomainRegistrarCollector):
