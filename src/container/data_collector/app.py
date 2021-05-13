@@ -30,13 +30,13 @@ if __name__ == "__main__":
     
         gd_collector = GoDaddyCollector()
 
-        gd_collector.batch_size = 10000
+        gd_collector.batch_size = 100000
         gd_collector.batch_limit = 5
         
         gd_collector.gather()
         #gd_collector.test_gather()
 
-        while gd_collector.HAS_PENDING_UPLOADS:
+        while gd_collector.HAS_PENDING_BATCH_FILES:
 
             gd_collector.upload_to_domain_table(conn)
 
