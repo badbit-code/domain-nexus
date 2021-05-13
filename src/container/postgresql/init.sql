@@ -1,18 +1,31 @@
 CREATE EXTENSION "uuid-ossp";
 
 CREATE
-OR REPLACE FUNCTION trigger_set_timestamp() RETURNS TRIGGER AS $$ BEGIN NEW.updated = NOW();
+OR REPLACE FUNCTION trigger_set_timestamp() RETURNS TRIGGER AS $$
+BEGIN NEW .updated = NOW();
+
 RETURN NEW;
+
 END;
+
 $$ LANGUAGE plpgsql;
 
-CREATE
-OR REPLACE FUNCTION generate_domain_uuid() RETURNS trigger AS $$ BEGIN NEW.id := uuid_generate_v3(
-  uuid_ns_url(),
-  NEW.name || '.' || NEW.tld
-);
-RETURN NEW;
-END;
+CREATE OR REPLACE FUNCTION generate_domain_uuid() 
+RETURNS trigger AS $$
+  declare local_tld_string text;
+  BEGIN
+    SELECT name INTO local_tld_string
+    FROM top_level_domain
+    WHERE id = NEW .tld;
+
+    NEW.id := uuid_generate_v3(
+      uuid_ns_url(),
+      LOWER(NEW .name) || '.' || local_tld_string
+    );
+
+    RETURN NEW;
+
+  END;
 $$ LANGUAGE plpgsql;
 
 CREATE TABLE IF NOT EXISTS top_level_domain (
@@ -104,18 +117,15 @@ CREATE TABLE IF NOT EXISTS web_archive_meta (
 
 
 CREATE TRIGGER set_timestamp BEFORE
-UPDATE
-  ON domain FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+UPDATE ON domain FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
-CREATE TRIGGER trigger_generate_domain_uuid BEFORE INSERT
-OR
-UPDATE
-  ON domain FOR EACH ROW EXECUTE PROCEDURE generate_domain_uuid();
-
-CREATE TRIGGER set_timestamp BEFORE
-UPDATE
-  ON goddady_meta FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+CREATE TRIGGER trigger_generate_domain_uuid BEFORE
+INSERT
+  OR
+UPDATE ON domain FOR EACH ROW EXECUTE PROCEDURE generate_domain_uuid();
 
 CREATE TRIGGER set_timestamp BEFORE
-UPDATE
-  ON sedo_meta FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+UPDATE ON goddady_meta FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+
+CREATE TRIGGER set_timestamp BEFORE
+UPDATE ON sedo_meta FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
