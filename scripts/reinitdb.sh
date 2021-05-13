@@ -48,15 +48,15 @@ nexus_connection_stub="psql -U doadmin -h $POSTGRES_HOST -p $POSTGRES_PORT -d ne
 
 # Destroy nexus db and users
 $base_connection_stub -c "DROP DATABASE nexus"
-$base_connection_stub -c "DROPUSER nexus_collector"
-$base_connection_stub -c "DROPUSER nexus_reader"
+$base_connection_stub -c "DROP USER nexus_collector"
+$base_connection_stub -c "DROP USER nexus_reader"
 
 # Create nexus db
 $base_connection_stub -c "CREATE DATABASE nexus"
 
 # Create nexus users
-$base_connection_stub -c "CREATE user nexus_reader ENCRYPTED PASSWORD '$DEFAULT_NEXUS_R_PW' NOCREATEUSER NOCREATEDB VALID UNTIL 'infinity'" 
-$base_connection_stub -c "CREATE user nexus_collector ENCRYPTED PASSWORD '$DEFAULT_NEXUS_W_PW' NOCREATEUSER NOCREATEDB VALID UNTIL 'infinity'"
+$base_connection_stub -c "CREATE user nexus_reader ENCRYPTED PASSWORD '$DEFAULT_NEXUS_R_PW' NOCREATEDB VALID UNTIL 'infinity'" 
+$base_connection_stub -c "CREATE user nexus_collector ENCRYPTED PASSWORD '$DEFAULT_NEXUS_W_PW' NOCREATEDB VALID UNTIL 'infinity'"
 
 # Grant priviliges 
 $base_connection_stub -c "GRANT CONNECT ON DATABASE nexus to nexus_collector"
