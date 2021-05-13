@@ -1,6 +1,6 @@
 FROM python:3.9.4-slim as base
 
-FROM base as builder
+FROM base as final
 
 RUN apt-get -qq update \
     && apt-get install -y --no-install-recommends \
@@ -10,38 +10,21 @@ RUN apt-get -qq update \
 
 COPY ./requirements.txt .
 
-RUN pip install -r requirements.txt
+RUN python -m pip install -r requirements.txt
 
-FROM builder as tester
+# RUN ["pytest", "-s"]
+
+
 
 # Enable unbuffered logging
 ENV PYTHONUNBUFFERED=1
 # Enable Profiler
 ENV ENABLE_PROFILER=1
 
-ARG POSTGRES_USER
-ARG POSTGRES_PASSWORD
-ARG POSTGRES_DB
 
-ENV POSTGRES_USER=${POSTGRES_USER}
-ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-ENV POSTGRES_DB=${POSTGRES_DB}
-
+COPY ./src /app
 COPY . /app
-WORKDIR /app
-
-RUN ["pytest", "-s"]
-
-FROM base as final
-
-# Enable unbuffered logging
-ENV PYTHONUNBUFFERED=1
-# Enable Profiler
-ENV ENABLE_PROFILER=1
-
-COPY --from=tester /usr/local/lib/python3.9/ /usr/local/lib/python3.9/
-COPY --from=tester /app /app
 
 WORKDIR /app
 
-ENTRYPOINT [ "/bin/bash" ]
+ENTRYPOINT [ "python", "./app.py"]

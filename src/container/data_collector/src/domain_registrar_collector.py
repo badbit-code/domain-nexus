@@ -1,10 +1,23 @@
-import pandas as pd
 import requests
+import pandas as pd
 from io import StringIO
 from datetime import datetime
 from psycopg2.extras import RealDictCursor, execute_values
 from psycopg2 import DatabaseError
 import numpy as np
+
+
+def get_row_count(table_name, cursor) -> int:
+    """
+    Returns total number of row in a table 
+    """
+
+    cursor.execute(f"SELECT count(*) FROM {table_name}")
+
+    results = cursor.fetchone()
+
+    return int(results["count"])
+
 
 class DomainRegistrarCollector:
     """
@@ -16,6 +29,10 @@ class DomainRegistrarCollector:
 
         self.pending_domains = []
 
+        self.batch_size = 50000
+
+        self.batch_limit = 20
+
     def gather(self):
         """
         Connect to registrar's service and collect a list of domains. Separate results
@@ -23,7 +40,7 @@ class DomainRegistrarCollector:
         """
         pass
 
-    def map_to_internal_schema(self) -> [dict]:
+    def map_to_internal_schema(self, row:dict) -> dict:
         """
         Map the pending domains to a list of dicts that adhere to the internal
         DB schema
@@ -37,56 +54,73 @@ class DomainRegistrarCollector:
             registered: epoch_int, # Can be 0, indicating that a subsequent DB pass must be made to gather the created information
         }
         """
-        return []
+        return row
 
-    def upload_to_db(self, conn):
+    @property 
+    def HAS_PENDING_UPLOADS(self):
+        return len(self.pending_domains) > 0
+
+    def upload_to_domain_table(self, conn):
 
         import math
 
         from io import StringIO
 
-        
-
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        new_domains = self.map_to_internal_schema()
+        if self.HAS_PENDING_UPLOADS:
 
-        if len(new_domains) > 0:
+            start_count = get_row_count("domain", cursor)
 
-            # Insert in batches of 100
-            batch_size = 200000
+            print(f"Uploading {len(self.pending_domains)} domain names from Godaddy. Current number of entries is {start_count}")
 
-            # columns=new_domains[0].keys()
+            batch_size = self.batch_size
 
-            # cursor.execute("""DROP TABLE temp_domains""")
+            print("Creating temporary table")
+
+            # Using a temporary table to reduce network overhead and exploit local data processing on
+            # PostgreSQL DB
             cursor.execute(
                 """
                 CREATE TEMPORARY TABLE temp_domains(
                     name text,
                     tld text,
-                    registrar int,
-                    expired timestampz,
-                    registered timestampz
+                    registrar text,
+                    expired timestamp,
+                    registered timestamp
                 )
             """
             )
 
+            # Upload prospective domain data to temp table one batch_size at time. 
+
+            total_uploads = 0
+
             for batch_id in range(math.ceil(len(self.pending_domains) / batch_size)):
 
-                if batch_id > 5:
+                if batch_id > self.batch_limit:
+
+                    print("Batch upload limit reached")
+
                     break
 
-                batch = new_domains[
-                    (batch_id * batch_size) : (
-                        min(len(new_domains), batch_id * batch_size + batch_size)
-                    )
-                ]
+                batch = [self.map_to_internal_schema(row) for row in self.pending_domains[:batch_size]]
+
+                self.pending_domains = self.pending_domains[batch_size:]
+
+                actual_batch_size = len(batch)
+
+                total_uploads += actual_batch_size
+
+                print(f"Uploading batch of {actual_batch_size} domains to temporary table")
 
                 data = StringIO()
 
                 data.write(
                     "\n".join([",".join([str(v) for v in d.values()]) for d in batch])
                 )
+
+                batch = None
 
                 data.seek(0)
 
@@ -97,17 +131,71 @@ class DomainRegistrarCollector:
                     columns=("name", "tld", "registrar", "expired", "registered"),
                 )
 
+                print("Upload complete")
+
+            print(f"Completed upload of batches. {total_uploads} pending domains uploaded")
+
+            # Update registrar table. Get batch of registrar names that do not have corresponding rows in 
+            # registrar and create new rows for this batch. Make sure all names are lowercase
             cursor.execute(
                 """
-                INSERT INTO domains (name,tld,registrar,expired,registered)
-                SELECT name,tld,registrar,expired,registered FROM temp_domains
+                WITH reg AS(
+                    SELECT DISTINCT (LOWER(registrar)) r 
+                    FROM temp_domains as td 
+                    WHERE NOT EXISTS( SELECT * from registrar WHERE name=LOWER(td.registrar) ) 
+                )
+                INSERT INTO registrar(name)
+                SELECT r FROM reg
+                ON CONFLICT (name) DO NOTHING
+                """
+            )
+            conn.commit()
+
+            # Update top_level_domain table. Get batch of tld names that do not have corresponding rows in 
+            # top_level_domain and create new rows for this batch. Make sure all names are lowercase
+            cursor.execute(
+                """
+                WITH tld AS(
+                    SELECT DISTINCT (LOWER(tld)) t 
+                    FROM temp_domains as td 
+                    WHERE NOT EXISTS( SELECT * from top_level_domain WHERE name=LOWER(td.tld) ) 
+                )
+                INSERT INTO top_level_domain(name)
+                SELECT t FROM tld
+                ON CONFLICT (name) DO NOTHING
+            """
+            )
+            conn.commit()
+
+            # Finally insert any new domains.  
+            cursor.execute(
+                """
+                INSERT INTO domain (name,tld,registrar)
+                SELECT 
+                    LOWER(name),
+                    (SELECT id from top_level_domain WHERE name=LOWER(temp_domains.tld)),
+                    (SELECT id from registrar WHERE name=LOWER(temp_domains.registrar))
+                FROM temp_domains
                 ON CONFLICT (id) DO NOTHING
             """
             )
 
             conn.commit()
 
-            self.pending_domains.clear()
+            print("Dropping temporary table")
+
+            cursor.execute("""DROP TABLE temp_domains""")
+
+            conn.commit()
+
+            end_count = get_row_count("domain", cursor)
+
+            delta_count = end_count - start_count
+
+            print(f"Uploaded {delta_count} domains. Current number of entries is {end_count}")
+
+            if self.HAS_PENDING_UPLOADS:
+                print(f"{len(self.pending_domains)} pending domains reamain to be processed")
 
     
     def insert_new_domains(self, conn, df: pd.DataFrame):
@@ -199,28 +287,21 @@ class DomainRegistrarCollector:
 
 
 class GoDaddyCollector(DomainRegistrarCollector):
-    def map_to_internal_schema(self) -> [dict]:
-        from datetime import datetime
 
-        return [
-            {
-                "name": domain["domainName"].split(".")[0],
-                "tld": domain["domainName"].split(".")[1],
-                "registrar": 1,
+    def map_to_internal_schema(self, row:dict) -> dict:
+        from datetime import datetime
+        return   {
+                "name": row["domainName"].split(".")[0],
+                "tld": row["domainName"].split(".")[1],
+                "registrar": "godaddy",
                 "expired": datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
                 "registered": datetime.fromtimestamp(0).strftime("%m/%d/%Y %H:%M:%S"),
             }
-            for domain in self.pending_domains
-        ]
+        
 
     def test_gather(self):
 
-        from ftplib import FTP
-        from zipfile import ZipFile
-        from io import BytesIO
         import json
-        import os
-        from typing import Generator
 
         with open("./all_listings3.json", "r") as file:
 
@@ -234,8 +315,6 @@ class GoDaddyCollector(DomainRegistrarCollector):
         from zipfile import ZipFile
         from io import BytesIO
         import json
-        import os
-        from typing import Generator
 
         with FTP("ftp.godaddy.com", "auctions") as ftp:
 
@@ -263,10 +342,13 @@ class GoDaddyCollector(DomainRegistrarCollector):
 
                             json_data = json.loads(json_contents.read().decode("utf-8"))
 
+                            print(f"{file_name} contains {len(json_data['data'])} entries")
+
                             self.pending_domains.extend(json_data["data"])
 
 
 class SedoCollector(DomainRegistrarCollector):
+
     def fetch_data(self) -> StringIO:
         sedo_url = "https://sedo.com/fileadmin/documents/resources/expiring_domain_auctions.csv"
         response = requests.get(sedo_url)
