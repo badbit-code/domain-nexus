@@ -6,6 +6,7 @@ from psycopg2.extras import RealDictCursor, execute_values
 from psycopg2 import DatabaseError
 import numpy as np
 
+
 class DomainRegistrarCollector:
     """
     Base class for a collector object that gathers domain data from a domain registrar's
@@ -44,8 +45,6 @@ class DomainRegistrarCollector:
         import math
 
         from io import StringIO
-
-        
 
         cursor = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -109,7 +108,6 @@ class DomainRegistrarCollector:
 
             self.pending_domains.clear()
 
-    
     def insert_new_domains(self, conn, df: pd.DataFrame):
         """
         Using psycopg2.extras.execute_values() to insert the dataframe
@@ -117,15 +115,21 @@ class DomainRegistrarCollector:
         # Create a list of tupples from the dataframe values
         tuples = [tuple(x) for x in df.to_numpy()]
         cursor = conn.cursor()
-        values = [cursor.mogrify("""(%s, (SELECT id FROM top_level_domain WHERE name = %s), (SELECT id FROM registrar WHERE name = %s))""", tup).decode('utf8') for tup in tuples]
+        values = [
+            cursor.mogrify(
+                """(%s, (SELECT id FROM top_level_domain WHERE name = %s), (SELECT id FROM registrar WHERE name = %s))""",
+                tup,
+            ).decode("utf8")
+            for tup in tuples
+        ]
         # SQL quert to execute
-        query  = """INSERT INTO domain (name, tld, registrar) 
-                    VALUES """ + ",".join(values)
-        
-        #try:
+        query = f"""INSERT INTO domain (name, tld, registrar) 
+                    VALUES {",".join(values)} ON CONFLICT DO NOTHING"""
+
+        # try:
         cursor.execute(query, tuples)
         conn.commit()
-        #except (Exception, DatabaseError) as error:
+        # except (Exception, DatabaseError) as error:
         #    print("Error: %s" % error)
         #    conn.rollback()
         #    cursor.close()
@@ -133,14 +137,14 @@ class DomainRegistrarCollector:
         print("execute_values() done")
         cursor.close()
 
-    def insert_new_tlds(self, conn, tld_names: np.ndarray):        
+    def insert_new_tlds(self, conn, tld_names: np.ndarray):
         """
         Using cursor.mogrify() to build the bulk insert query
         then cursor.execute() to execute the query
         """
         # SQL quert to execute
         cursor = conn.cursor()
-        values = [cursor.mogrify("(%s)", (tld,)).decode('utf8') for tld in tld_names]
+        values = [cursor.mogrify("(%s)", (tld,)).decode("utf8") for tld in tld_names]
         query = f"""INSERT INTO top_level_domain (name) 
                     SELECT 
                     NewTLD.name 
@@ -168,34 +172,6 @@ class DomainRegistrarCollector:
             return 1
         print("update_tld() done")
         cursor.close()
-
-
-    def update_domain(self, conn, df: pd.DataFrame):
-        query = """INSERT INTO top_level_domain (name, tld, registrar) 
-                    VALUES 
-                    (
-                        %s, 
-                        (
-                        SELECT 
-                            id 
-                        FROM 
-                            tld 
-                        WHERE 
-                            name = %s
-                        ), 
-                        (
-                        SELECT 
-                            id 
-                        FROM 
-                            registrar 
-                        WHERE 
-                            name = %s
-                        )
-                    )"""
-        cursor = conn.cursor()
-        #try:
-        execute_values(cursor, query, tuples)
-        conn.commit()
 
 
 class GoDaddyCollector(DomainRegistrarCollector):
@@ -228,7 +204,8 @@ class GoDaddyCollector(DomainRegistrarCollector):
 
             self.pending_domains.extend(json_data["data"])
 
-    def gather(self):
+    
+    def fetch_data(self):
 
         from ftplib import FTP
         from zipfile import ZipFile
@@ -237,33 +214,31 @@ class GoDaddyCollector(DomainRegistrarCollector):
         import os
         from typing import Generator
 
+        godaddy_domains = []
         with FTP("ftp.godaddy.com", "auctions") as ftp:
-
             files_needed = [
                 x
                 for x in ftp.nlst()
                 if x.startswith("all_listings") and not x.startswith("all_listings_")
             ]
-
             for file_name in files_needed:
-
                 print(f"Downloading {file_name}")
-
                 with BytesIO() as tempfile:
-
                     ftp.retrbinary(f"RETR {file_name}", tempfile.write)
-
                     with ZipFile(tempfile) as zip_:
-
                         file_to_extract = file_name.rsplit(".", 1)[0]
-
                         with zip_.open(file_to_extract) as json_contents:
-
                             file_to_extract = file_name.rsplit(".", 1)[0]
-
                             json_data = json.loads(json_contents.read().decode("utf-8"))
+                            godaddy_domains.extend(json_data["data"])
+        return godaddy_domains
 
-                            self.pending_domains.extend(json_data["data"])
+    def add_registrar(self, conn):
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO registrar (name) VALUES ('godaddy') ON CONFLICT DO NOTHING"
+        )
+        conn.commit()
 
 
 class SedoCollector(DomainRegistrarCollector):
@@ -273,31 +248,64 @@ class SedoCollector(DomainRegistrarCollector):
         return StringIO(response.content.decode("utf-16"))
 
     def preprocess_data(self, sedo_csv) -> pd.DataFrame:
-        sedo_df = pd.read_csv(sedo_csv, delimiter=';', encoding='utf-16', skiprows=1)
-        
+        sedo_df = pd.read_csv(sedo_csv, delimiter=";", encoding="utf-16", skiprows=1)
+
         # We don't need the links for each domain
-        sedo_df.drop(['Link'], axis=1, inplace=True)
+        sedo_df.drop(["Link"], axis=1, inplace=True)
         # tld is removed from domain name since it's stored seperately
-        sedo_df['Domain Name'] = sedo_df['Domain Name'].apply(lambda x: x.split('.')[0])
+        sedo_df["Domain Name"] = sedo_df["Domain Name"].apply(lambda x: x.split(".")[0])
         # rename columns to match db column names
-        sedo_df.rename(columns={"Domain Name": "name",
-                                  "Start Time":"start_time",
-                                  "End Time":"end_time",
-                                  "Reserve Price":"reserve_price",
-                                  "Domain is IDN": "domain_is_idn",
-                                  "Domain has hyphen": "domain_has_hyphen",
-                                  "Domain has numbers": "domain_has_numbers",
-                                  "Domain Length": "domain_length",
-                                  "TLD": "tld",
-                                  "Traffic": "traffic"}, inplace=True)
+        sedo_df.rename(
+            columns={
+                "Domain Name": "name",
+                "Start Time": "start_time",
+                "End Time": "end_time",
+                "Reserve Price": "reserve_price",
+                "Domain is IDN": "domain_is_idn",
+                "Domain has hyphen": "domain_has_hyphen",
+                "Domain has numbers": "domain_has_numbers",
+                "Domain Length": "domain_length",
+                "TLD": "tld",
+                "Traffic": "traffic",
+            },
+            inplace=True,
+        )
         sedo_df["registrar"] = "sedo"
 
         return sedo_df
 
-    def update_registrar(self, conn):
+    def add_registrar(self, conn):
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO registrar (name) VALUES ('sedo') ON CONFLICT DO NOTHING")
+        cursor.execute(
+            "INSERT INTO registrar (name) VALUES ('sedo') ON CONFLICT DO NOTHING"
+        )
         conn.commit()
 
+    def insert_new_domains(self, conn, df: pd.DataFrame):
+        """
+        Using psycopg2.extras.execute_values() to insert the dataframe
+        """
+        # Create a list of tupples from the dataframe values
+        tuples = [tuple(x) for x in df.to_numpy()]
+        cursor = conn.cursor()
+        values = [
+            cursor.mogrify(
+                """(%s, (SELECT id FROM top_level_domain WHERE name = %s), (SELECT id FROM registrar WHERE name = %s))""",
+                tup,
+            ).decode("utf8")
+            for tup in tuples
+        ]
+        # SQL quert to execute
+        query = f"""INSERT INTO domain (name, tld, registrar) 
+                    VALUES {",".join(values)} ON CONFLICT DO NOTHING"""
 
-
+        # try:
+        cursor.execute(query, tuples)
+        conn.commit()
+        # except (Exception, DatabaseError) as error:
+        #    print("Error: %s" % error)
+        #    conn.rollback()
+        #    cursor.close()
+        #    return 1
+        print("execute_values() done")
+        cursor.close()

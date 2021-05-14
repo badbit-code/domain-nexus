@@ -76,6 +76,33 @@ CREATE TABLE IF NOT EXISTS sedo_meta (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS alexa_meta (
+  id bigserial PRIMARY KEY,
+  domain_id UUID REFERENCES domain(id),
+  popularity = INT,
+  reach_rank = INT,
+  rank_delta = INT,
+  country_code = VARCHAR(7),
+  country_name = VARCHAR(63),
+  country_rank = INT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS web_archive_meta (
+  id bigserial PRIMARY KEY,
+  domain_id UUID REFERENCES domain(id),
+  popularity = INT,
+  reach_rank = INT,
+  rank_delta = INT,
+  country_code = VARCHAR(7),
+  country_name = VARCHAR(63),
+  country_rank = INT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+
 CREATE TRIGGER set_timestamp BEFORE
 UPDATE
   ON domain FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
