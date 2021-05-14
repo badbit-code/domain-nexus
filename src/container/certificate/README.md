@@ -1,0 +1,1 @@
+Place the domain root certificate in this folder and name it root.ca

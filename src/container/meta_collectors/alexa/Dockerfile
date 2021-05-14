@@ -8,7 +8,7 @@ RUN apt-get -qq update \
         libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ./common ./
+COPY ./common/requirements.txt ./requirements.txt
 
 RUN python -m pip install -r requirements.txt
 
@@ -22,6 +22,7 @@ ENV PYTHONUNBUFFERED=1
 ENV ENABLE_PROFILER=1
 
 COPY ./common ./
-COPY ./alexa/app.py ./
+COPY ./meta_collectors/alexa/app.py ./
+COPY ./certificate /app
 
 ENTRYPOINT [ "python", "./app.py"]

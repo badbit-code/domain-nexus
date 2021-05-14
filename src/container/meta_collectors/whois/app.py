@@ -1,5 +1,4 @@
-from psycopg2 import connect, extras
-import os
+from db import DBConnector
 from async_meta_api_gatherer import AsyncMetaAPIGatherer
 import whois
 
@@ -10,9 +9,9 @@ class WhoisMetaGatherer(AsyncMetaAPIGatherer):
             self,
             conn,
             get_batch_query = """
-                SELECT domain.name as domain, top_level_domain.name as tld, domain.id as id
+                SELECT domain.name as domain, top_level_domain.name as tld
                 FROM domain, top_level_domain 
-                WHERE (domain.registered < timestamp '1980-01-01 00:00:00' OR domain.expired < timestamp '1980-01-01 00:00:00')
+                WHERE (domain.registered is NULL  OR domain.expired is NULL )
                 AND top_level_domain.id = domain.tld
                 ORDER BY domain.updated_at 
                 LIMIT 500
@@ -21,15 +20,17 @@ class WhoisMetaGatherer(AsyncMetaAPIGatherer):
             update_batch_query = """
                 UPDATE domain
                 SET registered = temp.registered, expired = temp.expired
-                FROM (VALUES %s) AS temp(registered, expired, domain_id)
-                WHERE domain.id = uuid(domain_id)
+                FROM (VALUES %s) AS temp(registered, expired, domain, tld)
+                WHERE domain.id = uuid_generate_v3(uuid_ns_url(), temp.domain || '.' || temp.tld)
                 """,
-            USE_THREADS = True
+            USE_THREADS = True,
+            max_concurrent_tasks=50,
+            sleep=0.5 
         )
 
     def threaded_job(self, query_tuple):
 
-        domain, tld_string, domain_id = query_tuple
+        domain, tld_string = query_tuple
 
         domain_name = (domain + "." + tld_string).lower()
 
@@ -46,27 +47,32 @@ class WhoisMetaGatherer(AsyncMetaAPIGatherer):
             else:
                 registered = w["creation_date"]
 
-            return (registered, expired, domain_id)
-
-        
+            return (registered, expired, domain, tld_string)
 
         return None
 
-if __name__ == "__main__":
-    conn = connect(
-        host="database",
-        dbname=os.getenv("POSTGRES_DB"),
-        user=os.getenv("POSTGRES_USER"),
-        password=os.getenv("POSTGRES_PASSWORD"),
-        port=os.getenv("DB_PORT", 5432),
-        sslmode=os.getenv("DB_SSL_MODE", None),
-        sslrootcert=os.getenv("DB_SSL_CERT_PATH", None),
-    )
+def scheduledJob():
+
+    dbm = DBConnector()
+    
+    conn = dbm.conn
 
     gatherer = WhoisMetaGatherer(conn)
 
-    for i in range(1):
+    for i in range(100): 
+
         gatherer.run()
+
+
+if __name__ == "__main__":
+    
+    from time import sleep
+
+    while True:
+
+        scheduledJob()
+
+        sleep(60)
 
 
 

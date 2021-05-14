@@ -1,10 +1,5 @@
-import asyncio
-import queue
-import aiohttp
+from db import DBConnector
 import re
-from psycopg2 import connect, extras
-import requests
-import os
 from async_meta_api_gatherer import AsyncMetaAPIGatherer
 
 regex = re.compile(r'RANK="(\d+)"')
@@ -16,7 +11,7 @@ class AlexaMetaGatherer(AsyncMetaAPIGatherer):
             self,
             conn,
             get_batch_query = """
-                SELECT domain.name as domain, top_level_domain.name as tld, domain.tld as tld_id
+                SELECT domain.name as domain, top_level_domain.name as tld
                 FROM domain, top_level_domain 
                 WHERE domain.alexa_score is NULL 
                 AND top_level_domain.id = domain.tld
@@ -34,7 +29,7 @@ class AlexaMetaGatherer(AsyncMetaAPIGatherer):
 
     async def session_job(self, query_tuple, session):
 
-        domain, tld_string, tld_id = query_tuple
+        domain, tld_string = query_tuple
 
         domain_name = (domain + "." + tld_string).lower()
 
@@ -46,25 +41,38 @@ class AlexaMetaGatherer(AsyncMetaAPIGatherer):
 
             if re_result:
 
-                return (int(re_result.groups()[0]), domain, tld_id)
+                return (int(re_result.groups()[0]), domain, tld_string)
 
-            return (0, domain, tld_id)
+            return (0, domain, tld_string)
 
-if __name__ == "__main__":
-    conn = connect(
-        host="database",
-        dbname=os.getenv("POSTGRES_DB"),
-        user=os.getenv("POSTGRES_USER"),
-        password=os.getenv("POSTGRES_PASSWORD"),
-        port=os.getenv("DB_PORT", 5432),
-        sslmode=os.getenv("DB_SSL_MODE", None),
-        sslrootcert=os.getenv("DB_SSL_CERT_PATH", None),
-    )
+
+def scheduledJob():
+
+    dbm = DBConnector()
+    
+    conn = dbm.conn
 
     gatherer = AlexaMetaGatherer(conn)
 
-    for i in range(10):
+    for i in range(100): 
+
         gatherer.run()
+
+
+if __name__ == "__main__":
+    
+    from time import sleep
+
+    while True:
+
+        scheduledJob()
+
+        sleep(60)
+
+        
+
+
+
 
 
 

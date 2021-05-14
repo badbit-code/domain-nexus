@@ -10,6 +10,7 @@ RUN apt-get -qq update \
 
 COPY ./requirements.txt ./
 
+COPY ./common/requirements.txt .
 RUN python -m pip install -r requirements.txt
 WORKDIR /app
 
@@ -26,16 +27,14 @@ ARG POSTGRES_DB
 
 # RUN ["pytest", "-s"]
 
-
-
 # Enable unbuffered logging
 ENV PYTHONUNBUFFERED=1
 # Enable Profiler
 ENV ENABLE_PROFILER=1
 
-
-COPY ./src /app
-COPY . /app
+COPY ./data_collector/src /app
+COPY ./common /app
+COPY ./certificate /app
 
 WORKDIR /app
 
