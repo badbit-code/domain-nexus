@@ -9,22 +9,14 @@ from psycopg2.extras import RealDictCursor, execute_values
 from db import DBConnector
 import tempfile
 from sqlalchemy import create_engine, types
-import pymysql
 import pandas as pd
-
-cnx = MySQLdb.connect(
-    user='mcdanie1_nexus', 
-    password='22*x$KoFRHfy',
-    host='domain-nex.us',
-    database='mcdanie1_nexus'
-)
 
 """
 A data dump file is created from the following query,
 which is the used to do a batch upload to the mysql 
 data base. 
 """
-
+db = DBConnector()
 conn = db.conn
 cursor = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -37,9 +29,9 @@ CREATE TEMPORARY TABLE transfer_table(
     available text,
     ACE boolean,
     search boolean,
-    expired timestampz,
-    registered timestampz,
-    category text,
+    expired timestamptz,
+    registered timestamptz,
+    category text
 )
 """
 )
@@ -49,24 +41,27 @@ cursor.execute(
 """
 INSERT INTO transfer_table (domain)
 SELECT (name || tld) as domain 
-FROM domains 
+FROM domain 
 LIMIT 500
 """
 )
-
 conn.commit()
+
+
 
 # Copy table to tempfile
 
 transfer_file = tempfile.TemporaryFile("w+")
 
-cursor.copy_to(transfer_file, sep=",")
+cursor.copy_to(transfer_file,"transfer_table", sep=",")
+
+transfer_file.seek(0)
 
 conn.close()
 
 # Transfer the file to the remote server.
 # Clear Existing DB first ?
-engine = create_engine('mysql://mcdanie1_nexus:22*x$KoFRHfy@domain-nex.us/mcdanie1_nexus') # enter your password and database names here
+engine = create_engine('mysql+pymysql://mcdanie1_nexus:22*x$KoFRHfy@domain-nex.us/mcdanie1_nexus') # enter your password and database names here
 
 df = pd.read_csv(transfer_file,sep=',',encoding='utf8')
 
