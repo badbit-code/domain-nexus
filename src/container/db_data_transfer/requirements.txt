@@ -1,0 +1,5 @@
+dnspython==2.1.0
+python-whois==0.7.3
+schedule==1.1.0
+PyMySQL==1.2.5
+SQLAlchemy==1.4.18
