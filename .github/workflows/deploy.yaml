@@ -17,6 +17,6 @@ jobs:
           username: ${{secrets.SSH_USER_NAME}}
 
           script: |
-            cd /home/github/expired-domains
+            cd /home/github/domain-nexus
             ./deploy.sh
 
