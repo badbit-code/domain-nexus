@@ -8,10 +8,13 @@ RUN apt-get -qq update \
         libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ./requirements.txt ./
 
 COPY ./common/requirements.txt .
 RUN python -m pip install -r requirements.txt
+
+COPY ./data_collector/requirements.txt ./
+RUN python -m pip install -r requirements.txt
+
 WORKDIR /app
 
 #FROM builder as tester
@@ -38,4 +41,4 @@ COPY ./certificate /app
 
 WORKDIR /app
 
-ENTRYPOINT [ "/bin/bash" ]
+ENTRYPOINT [ "python", "./app.py"]
