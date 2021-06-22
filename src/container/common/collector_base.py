@@ -1,11 +1,19 @@
-from typing import List
+from typing import List, Tuple
 from db import DBConnector
+from psycopg2.extensions import AsIs
+import psycopg2.extras
+from typing import Generator
+
+psycopg2.extras.register_uuid()
 
 class MetaCollectorBase:
 
     aoc_table = ""
 
     sot_table = ""
+
+    def __init__(self):
+        self.schedule = None
 
     def __init_subclass__(sub_class, *, aoc_table:str="",  table_schema = [], sot_table:str = "domain"):
         """
@@ -56,25 +64,41 @@ class MetaCollectorBase:
         #Close the db until the next query 
         db.close()
 
+    def _clearData():
+        """
+        Remove any rows that do not have matching entries in the SoT 
+        table.
+        """
 
-    def getBatch(size:int=500):
+    def _getBatch(self, size:int=500):
         """
         Returns a batch of domain names that do not have entries
         within the table this class is responsible for. 
 
         size = Maximum number of entries to return. 
         """
+        batch = []
+        
+        db = DBConnector();
 
-    def updateBatch():
-        """
-        Takes a list of data elements and pushes to table. 
-        """
+        #Query the DB with new data table
+        conn = db.conn;
 
-    def clearData():
-        """
-        Remove any rows that do not have matching entries in the SoT 
-        table.
-        """
+        with conn:
+            with conn.cursor() as curs:
+
+                batch_size = 500
+
+                curs.execute(f"Select l.id,l.name,l.tld from {self.sot_table} l where NOT EXISTS ( SELECT NULL from {self.aoc_table} r where r.id = l.id ) LIMIT {batch_size} ")
+
+                batch = curs.fetchall()
+
+                print(batch)
+        
+        #Close the db until the next query 
+        db.close()
+    
+        return batch
 
     def registerJob(
         max_collectors:int = 1,
@@ -86,3 +110,68 @@ class MetaCollectorBase:
         max_collector:int - Maximum number of Job instances for this type 
         of service. 
         """
+
+    def process_batch(self, batch:List[Tuple[str, ] ] ) -> Generator[dict, None, None]:
+        """
+        Process a batch of domains. Receives a list of 
+        tuples that represent domains that have yet to be added to 
+        the aoc table.
+
+        This tuple is comprised of => (str: domain_uuid, str: domain_name, str:domain_tld)
+
+        Expects function to yield either dicts or list of dicts whose structure matches
+        the layout of table schema, with the addition of the id key/value
+        """
+
+        raise Exception("Not Implemented")
+
+    def __run(self):
+
+        batch = self._getBatch();
+
+        for row_dict in self.process_batch(batch) :
+            
+            if row_dict :
+                # We have a choice to batch up the results and 
+                # do a mass insert or insert each row individually 
+                # as we go.
+
+                # This should be determined by the rate at which we
+                # receive rows. 
+                db = DBConnector();
+
+                #Query the DB with new data table
+                conn = db.conn;
+
+                with conn:
+                    with conn.cursor() as curs:
+
+                        keys = row_dict.keys();
+                        values = [row_dict[key] for key in keys];
+                        
+                        query = curs.mogrify(f"Insert into {self.aoc_table} (%s) values %s", (AsIs(",".join(keys)), tuple(values)))
+
+                        curs.execute(query);
+                
+                #Close the db until the next query 
+                db.close()
+
+    def run(self):
+        """
+        Runs batch jobs according to the run schedule
+
+        If there is no run schedule then runs once
+        """
+
+        if(self.schedule):
+
+            raise Exception("Not Implemented")
+
+        else:
+            self.__run()
+
+
+
+
+
+

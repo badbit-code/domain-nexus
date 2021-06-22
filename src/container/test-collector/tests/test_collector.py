@@ -1,3 +1,5 @@
+import pytest
+
 
 def test_init():
 
@@ -44,4 +46,27 @@ def test_init():
             GOT_TABLE = True
 
     assert GOT_TABLE == True
+
+def test_batch():
+     
+    from collector_base import MetaCollectorBase
+
+    class PingTest(MetaCollectorBase, 
+        aoc_table = "test_table",
+        table_schema = ["pingable bool NOT NULL"]):
+        
+        def process_batch(self, batch):
+
+            for id,domain,tld in batch:
+
+                if(tld =="com"):
+                    yield { "id": id, "pingable": True  }
+                else:
+                    yield { "id": id, "pingable": False  }            
+        
+    
+    ping_test = PingTest()
+
+    ping_test.run()
+
 
