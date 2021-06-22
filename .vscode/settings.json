@@ -1,3 +1,5 @@
 {
-    "python.pythonPath": "/home/sisyphus/.pyenv/versions/expired_domains/bin/python"
+    "python.pythonPath": "/home/sisyphus/.pyenv/versions/expired_domains/bin/python",
+    "python.linting.banditEnabled": true,
+    "python.linting.enabled": true
 }
