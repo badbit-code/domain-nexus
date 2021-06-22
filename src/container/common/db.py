@@ -30,4 +30,5 @@ class DBConnector:
             sslrootcert=os.getenv("POSTGRES_ROOT_CERT_PATH", None),
         )
 
-        print("AAA")
+    def close(self):
+        self.conn.close()

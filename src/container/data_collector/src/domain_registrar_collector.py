@@ -190,8 +190,8 @@ class DomainRegistrarCollector:
                 """
                 CREATE TEMPORARY TABLE temp_domains(
                     name text,
-                    tld int,
-                    registrar int,
+                    tld text,
+                    registrar text,
                     expired timestamp,
                     registered timestamp
                 )
@@ -241,8 +241,8 @@ class DomainRegistrarCollector:
                 INSERT INTO domain (name,tld,registrar)
                 SELECT 
                     LOWER(name),
-                    (SELECT id from top_level_domain WHERE name=LOWER(temp_domains.tld)),
-                    (SELECT id from registrar WHERE name=LOWER(temp_domains.registrar))
+                    LOWER(tld),
+                    LOWER(registrar)
                 FROM temp_domains
                 ON CONFLICT (id) DO NOTHING
             """
@@ -263,7 +263,7 @@ class DomainRegistrarCollector:
             print(f"Uploaded {delta_count} domains. Current number of entries is {end_count}")
 
             if self.HAS_PENDING_UPLOADS:
-                print(f"{len(self.pending_domains)} pending domains reamain to be processed")
+                print(f"{len(self.pending_domains)} pending domains remain to be processed")
 
     def insert_new_domains(self, conn, df: pd.DataFrame):
         """
