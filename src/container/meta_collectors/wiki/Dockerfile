@@ -26,7 +26,7 @@ ENV PYTHONUNBUFFERED=1
 ENV ENABLE_PROFILER=1
 
 COPY ./common ./
-COPY ./meta_collectors/alexa/app.py ./
+COPY ./meta_collectors/wiki/app.py ./
 COPY ./certificate /app
 
 ENTRYPOINT [ "python", "./app.py"]

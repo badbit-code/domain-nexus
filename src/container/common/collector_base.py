@@ -3,6 +3,8 @@ from db import DBConnector
 from psycopg2.extensions import AsIs
 import psycopg2.extras
 from typing import Generator
+import asyncio
+import queue
 
 psycopg2.extras.register_uuid()
 
@@ -44,6 +46,8 @@ class MetaCollectorBase:
         table_query = f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
             {table_query},
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             CONSTRAINT cstr_{table_name}
                 FOREIGN KEY(id)
                     REFERENCES domain(id)
@@ -125,11 +129,11 @@ class MetaCollectorBase:
 
         raise Exception("Not Implemented")
 
-    def __run(self):
+    async def _run(self):
 
         batch = self._getBatch();
 
-        for row_dict in self.process_batch(batch) :
+        async for row_dict in self.process_batch(batch) :
             
             if row_dict :
                 # We have a choice to batch up the results and 
@@ -150,7 +154,7 @@ class MetaCollectorBase:
                         values = [row_dict[key] for key in keys];
                         
                         query = curs.mogrify(f"Insert into {self.aoc_table} (%s) values %s", (AsIs(",".join(keys)), tuple(values)))
-
+                        
                         curs.execute(query);
                 
                 #Close the db until the next query 
@@ -168,7 +172,10 @@ class MetaCollectorBase:
             raise Exception("Not Implemented")
 
         else:
-            self.__run()
+
+            future = asyncio.ensure_future(self._run())
+    
+            asyncio.get_event_loop().run_until_complete(future)
 
 
 
