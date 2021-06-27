@@ -11,7 +11,7 @@ class WhoisMetaCollector(
         ]
 
 ):
-    def process_batch(self, batch):
+    async def process_batch(self, batch):
 
         for id, domain, tld in batch:
 
