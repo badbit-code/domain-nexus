@@ -173,10 +173,14 @@ class MetaCollectorBase:
             raise Exception("Not Implemented")
 
         else:
-
-            future = asyncio.ensure_future(self._run())
+            # Run indefinitely
+            while True:
+                
+                future = asyncio.ensure_future(self._run())
     
-            asyncio.get_event_loop().run_until_complete(future)
+                asyncio.get_event_loop().run_until_complete(future)
+
+                
 
 
 
