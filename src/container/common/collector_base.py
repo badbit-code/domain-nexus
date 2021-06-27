@@ -39,12 +39,13 @@ class MetaCollectorBase:
         
     def _createTable(table_name:str, table_schema: List[str]):
 
-        table_schema.insert(0, "id UUID PRIMARY KEY")
+        table_schema.insert(0, "id UUID NOT NULL")
 
         table_query = ",\n".join(table_schema)
 
         table_query = f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
+            id bigserial primary key, 
             {table_query},
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
