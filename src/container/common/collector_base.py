@@ -45,7 +45,7 @@ class MetaCollectorBase:
 
         table_query = f"""
         CREATE TABLE IF NOT EXISTS {table_name} (
-            id bigserial primary key, 
+            primary_id bigserial primary key, 
             {table_query},
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
