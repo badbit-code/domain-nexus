@@ -97,8 +97,6 @@ class MetaCollectorBase:
                 curs.execute(f"Select l.id,l.name,l.tld from {self.sot_table} l where NOT EXISTS ( SELECT NULL from {self.aoc_table} r where r.id = l.id ) LIMIT {batch_size} ")
 
                 batch = curs.fetchall()
-
-                print(batch)
         
         #Close the db until the next query 
         db.close()
