@@ -28,7 +28,7 @@ class RDAP:
 
         data = json.loads(bytes)
 
-        self.auth_servers = {key:{"host":val} for key, val in [(name, hosts[0]) for names, hosts in data["services"] for name in names]}
+        self.auth_servers = {key:{"host":val, "PAUSED_FOR_RETRY": False} for key, val in [(name, hosts[0]) for names, hosts in data["services"] for name in names]}
 
         print(self.auth_servers)
 
@@ -39,6 +39,8 @@ class RDAP:
         try:
             if auth is not None:
 
+                if auth["PAUSED_FOR_RETRY"]:
+                    return None
 
                 async with session.get(f"{auth['host']}domain/{domain_name}.{tld}") as response:
 
@@ -56,15 +58,22 @@ class RDAP:
 
                     if status == 429: # Rate limit exceeded
 
+                        auth["PAUSED_FOR_RETRY"] = True
+
                         # pause for a short amount of time and restart
                         import time
                         import random
 
-                        time_buffer = random.randint(1,45)
+                        time_buffer = random.randint(1,30)
 
                         print(data, response)
 
+                        if response.headers.get("Retry-After", None) or response.headers.get("retry-after", None):
+                            time_buffer = int(response.headers.get("Retry-After", None) or response.headers.get("retry-after", 0))
+
                         time.sleep(30 + time_buffer)
+
+                        auth["PAUSED_FOR_RETRY"] = False
 
                         return await self.get_registration_information(domain_name, tld, session)
 
