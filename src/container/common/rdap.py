@@ -53,6 +53,8 @@ class RDAP:
                     except:
                         
                         pass
+                    
+                    response.close()
 
                     if status == 429: # Rate limit exceeded
 
@@ -62,14 +64,14 @@ class RDAP:
                         import time
                         import random
 
-                        time_buffer = random.randint(1,30)
+                        time_buffer = random.randint(1,10)
 
                         print(data, response)
 
                         if response.headers.get("Retry-After", None) or response.headers.get("retry-after", None):
                             time_buffer = int(response.headers.get("Retry-After", None) or response.headers.get("retry-after", 0))
 
-                        time.sleep(30 + time_buffer)
+                        time.sleep(10 + time_buffer)
 
                         auth["PAUSED_FOR_RETRY"] = False
 

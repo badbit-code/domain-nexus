@@ -25,7 +25,9 @@ class WhoisMetaCollector(
 
             #time.sleep(2)
 
-            async with aiohttp.ClientSession() as session: 
+            print(id, domain, tld)
+
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session: 
 
                 data = await rdap.get_registration_information(domain, tld, session);
                 
@@ -54,11 +56,15 @@ class WhoisMetaCollector(
 
                                 yield {"id":id, "registered":registered or epoch_date, "expires": expired or epoch_date}
 
+                        else:
+                            
+                            pass
+
+                        
+
                     except:
 
                         import traceback
-
-                        print(w)
 
                         traceback.print_exc()
 
@@ -66,7 +72,7 @@ class WhoisMetaCollector(
 
                     yield {"id":id, "registered":epoch_date, "expires": epoch_date}
 
-                if data.get("no_data", None):
+                elif data.get("no_data", None):
 
                     yield {"id":id, "registered":epoch_date, "expires": epoch_date}
 
@@ -79,7 +85,7 @@ if __name__ == "__main__":
 
     collector = WhoisMetaCollector()
 
-    collector.number_of_threads = 2
+    collector.number_of_threads = 4
 
     collector.run()
 

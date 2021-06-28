@@ -176,13 +176,14 @@ class NICClient(object):
                 nhost = self.findwhois_server(response, hostname, query)
             if nhost is not None:
                 response += self.whois(query, nhost, 0)
-        except socket.error as exc: # 'response' is assigned a value (also a str) even on socket timeout
+        except: # 'response' is assigned a value (also a str) even on socket timeout
             import traceback 
+            s.close()
 
             print("Error trying to connect to socket: closing socket") 
             traceback.print_exc()
-            s.close()
-            response = "Socket not responding"   
+            response = None
+
         return response
 
     def choose_server(self, domain):
@@ -290,6 +291,7 @@ class NICClient(object):
                 result = ''
         else:
             result = self.whois(query_arg, options['whoishost'], flags)
+
         return result
 
 
@@ -304,4 +306,8 @@ def whois(domain, command=False, flags=0):
 
     text = nic_client.whois_lookup(None, domain.encode('idna'), flags)
 
-    return WhoisEntry.load(domain, text)
+    if text:
+
+        return WhoisEntry.load(domain, text)
+
+    return None
