@@ -21,14 +21,16 @@ conn = db.conn
 cursor = conn.cursor(cursor_factory=RealDictCursor)
 
 
+
 # Create a temporary table and copy all acceptable domains to it. 
 cursor.execute(
 """
-CREATE TEMPORARY TABLE transfer_table(
+CREATE TABLE  IF NOT EXISTS transfer_table(
     domain text,
     available text,
-    ACE int,
-    search boolean,
+    ACE boolean,
+    search text,
+    age interval,
     expired timestamptz,
     registered timestamptz,
     category text
@@ -37,38 +39,46 @@ CREATE TEMPORARY TABLE transfer_table(
 )
 conn.commit()
 
+
+#Populate table
+
 cursor.execute(
 """
-INSERT INTO transfer_table (domain, registered, expired, ACE)
+INSERT INTO transfer_table (domain, registered, expired, ACE, search, category, age)
 SELECT
-    (name || '.' || tld) as domain, 
+    (domain.name || '.' || domain.tld) as domain, 
     whois_data.registered as registered, 
     whois_data.expires as expired, 
-    alexa_data.alexa_score as ACE
-FROM domain, whois_data, alexa_data
-WHERE whois_data.id = domain.id AND alexa_data.id = domain.id
+    CAST( ( alexa_data.alexa_score > 0 OR wiki_data.has_wiki ) AS BOOLEAN ) as ACE,
+    'neutral' as search,
+    'none' as category,
+    AGE(NOW(), whois_data.registered) as age
+FROM domain, whois_data, alexa_data, wiki_data
+WHERE whois_data.id = domain.id AND alexa_data.id = domain.id AND wiki_data.id = domain.id
 """
 )
 
 conn.commit()
 
-# Copy table to tempfile
+# Copy table data to pandas frame
 
-transfer_file = tempfile.TemporaryFile("w+")
+data_frame = pd.read_sql_query("SELECT * from transfer_table", con=db.alchemy_engine())
 
-cursor.copy_to(transfer_file,"transfer_table", sep=",")
-
-transfer_file.seek(0)
-
-conn.close()
+cursor.execute(
+"""
+DROP TABLE transfer_table;
+"""
+)
+conn.commit()
 
 # Transfer the file to the remote server.
 # Clear Existing DB first ?
 engine = create_engine('mysql+pymysql://mcdanie1_nexus:22*x$KoFRHfy@domain-nex.us/mcdanie1_nexus') # enter your password and database names here
 
-df = pd.read_csv(transfer_file,sep=',', encoding='utf8', names=("domain", "available", "ACE", "search", "expired", "registered", "category"))
-
-df.to_sql('domains',con=engine,index=False,if_exists='append') 
+with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+    data_frame.info(verbose=True)
+    print(data_frame)
+#data_frame.to_sql('domains',con=engine,index=False,if_exists='append') 
 
 """
 domain = string (google.com)
@@ -79,8 +89,6 @@ age = how old is the domain vs registered last
 category = string from fuzzing ticket
 Search = good / neutral (does it result in its own domain name search on google in top 100 results, if yes then good, if no then neurtral)
 """
-
-transfer_file.close()
 
 
     

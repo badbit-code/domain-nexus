@@ -2,6 +2,8 @@ from psycopg2 import connect
 import os
 
 
+
+
 class DBConnector:
     """
     Simple class that creates and destroys a psycopg2 connection
@@ -55,3 +57,17 @@ class DBConnector:
 
     def close(self):
         self.conn.close()
+
+    def alchemy_engine(self):
+
+        from sqlalchemy import create_engine, types
+
+        host=os.getenv("POSTGRES_HOST")
+        dbname=os.getenv("POSTGRES_DB")
+        user=os.getenv("POSTGRES_USER")
+        password=os.getenv("POSTGRES_PASSWORD")
+        port=os.getenv("POSTGRES_PORT", 5432)
+        sslmode=os.getenv("POSTGRES_SSL_MODE", None) or None
+        sslrootcert=os.getenv("POSTGRES_ROOT_CERT_PATH", None)
+
+        return create_engine(f"postgresql://{user}:{password}@{host}:{port}/{dbname}")
