@@ -27,7 +27,7 @@ cursor.execute(
 CREATE TEMPORARY TABLE transfer_table(
     domain text,
     available text,
-    ACE boolean,
+    ACE int,
     search boolean,
     expired timestamptz,
     registered timestamptz,
@@ -39,15 +39,18 @@ conn.commit()
 
 cursor.execute(
 """
-INSERT INTO transfer_table (domain)
-SELECT (name || tld) as domain 
-FROM domain 
-LIMIT 500
+INSERT INTO transfer_table (domain, registered, expired, ACE)
+SELECT
+    (name || '.' || tld) as domain, 
+    whois_data.registered as registered, 
+    whois_data.expires as expired, 
+    alexa_data.alexa_score as ACE
+FROM domain, whois_data, alexa_data
+WHERE whois_data.id = domain.id AND alexa_data.id = domain.id
 """
 )
+
 conn.commit()
-
-
 
 # Copy table to tempfile
 
@@ -63,7 +66,7 @@ conn.close()
 # Clear Existing DB first ?
 engine = create_engine('mysql+pymysql://mcdanie1_nexus:22*x$KoFRHfy@domain-nex.us/mcdanie1_nexus') # enter your password and database names here
 
-df = pd.read_csv(transfer_file,sep=',',encoding='utf8')
+df = pd.read_csv(transfer_file,sep=',', encoding='utf8', names=("domain", "available", "ACE", "search", "expired", "registered", "category"))
 
 df.to_sql('domains',con=engine,index=False,if_exists='append') 
 

@@ -1,6 +1,12 @@
 from collector_base import MetaCollectorBase
+import aiohttp
+import rdap
+import datetime
 import whois
 
+rdap = rdap.RDAP()
+
+epoch_date = datetime.datetime.utcfromtimestamp(0).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 class WhoisMetaCollector(
     MetaCollectorBase,
@@ -13,38 +19,59 @@ class WhoisMetaCollector(
 ):
     async def process_batch(self, batch):
 
+        import time
+
         for id, domain, tld in batch:
 
-            try:
+            #time.sleep(2)
 
-                w = whois.whois(domain + "." + tld)
+            async with aiohttp.ClientSession() as session: 
 
-                if w:
-                    if type(w["expiration_date"]) is list:
-                        expired = w["expiration_date"][0]
-                    else:
-                        expired = w["expiration_date"]
-
-                    if type(w["creation_date"]) is list:
-                        registered = w["creation_date"][0]
-                    else:
-                        registered = w["creation_date"]
-
-
-                    if registered and expired:
-
-                        yield {"id":id, "registered":registered, "expires": expired}
-            
-            except:
+                data = await rdap.get_registration_information(domain, tld, session);
                 
-                pass
+                if data is None:
+                    continue
+
+                if data.get("no_data", None):
+
+                    try:
+
+                        w = whois.whois(domain + "." + tld, flags=whois.NICClient.WHOIS_QUICK)
+
+                        if w:
+                            if type(w["expiration_date"]) is list:
+                                expired = w["expiration_date"][0]
+                            else:
+                                expired = w["expiration_date"]
+
+                            if type(w["creation_date"]) is list:
+                                registered = w["creation_date"][0]
+                            else:
+                                registered = w["creation_date"]
+
+
+                            if registered and expired:
+
+                                yield {"id":id, "registered":registered or epoch_date, "expires": expired or epoch_date}
+
+                    except:
+                        pass
+            
+
+                    yield {"id":id, "registered":epoch_date, "expires": epoch_date}
+
+                else:
+
+                    yield {"id":id, "registered":data.get("registered", epoch_date), "expires": data.get("expires", epoch_date)}
+
+                
 
 
 if __name__ == "__main__":
 
     collector = WhoisMetaCollector()
 
-    collector.number_of_threads = 16
+    collector.number_of_threads = 4
 
     collector.run()
 
