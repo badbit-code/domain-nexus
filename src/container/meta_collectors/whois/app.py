@@ -44,6 +44,8 @@ if __name__ == "__main__":
 
     collector = WhoisMetaCollector()
 
+    collector.number_of_threads = 16
+
     collector.run()
 
 

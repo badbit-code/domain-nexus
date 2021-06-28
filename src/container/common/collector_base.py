@@ -5,6 +5,7 @@ import psycopg2.extras
 from typing import Generator
 import asyncio
 import queue
+import threading
 
 psycopg2.extras.register_uuid()
 
@@ -16,6 +17,8 @@ class MetaCollectorBase:
 
     def __init__(self):
         self.schedule = None
+        self.number_of_threads = 4;
+        self.queue = queue.Queue()
 
     def __init_subclass__(sub_class, *, aoc_table:str="",  table_schema = [], sot_table:str = "domain"):
         """
@@ -75,14 +78,14 @@ class MetaCollectorBase:
         table.
         """
 
-    def _getBatch(self, size:int=500):
+    def _getBatches(self, size:int=500) -> List[List[dict]]:
         """
         Returns a batch of domain names that do not have entries
         within the table this class is responsible for. 
 
         size = Maximum number of entries to return. 
         """
-        batch = []
+        batches = []
         
         db = DBConnector();
 
@@ -92,16 +95,26 @@ class MetaCollectorBase:
         with conn:
             with conn.cursor() as curs:
 
-                batch_size = 500
+                batch_size = size * self.number_of_threads
 
                 curs.execute(f"Select l.id,l.name,l.tld from {self.sot_table} l where NOT EXISTS ( SELECT NULL from {self.aoc_table} r where r.id = l.id ) LIMIT {batch_size} ")
 
                 batch = curs.fetchall()
+
+                batch_size = int(len(batch) / self.number_of_threads);
+
+                for i in range(self.number_of_threads):
+                    if i == (self.number_of_threads - 1):
+                        print(i, batch_size)
+                        batches.append(batch[i*batch_size:])
+                    else:
+                        batches.append(batch[i*batch_size:i*batch_size+batch_size])
+
         
         #Close the db until the next query 
         db.close()
     
-        return batch
+        return batches
 
     def registerJob(
         max_collectors:int = 1,
@@ -114,7 +127,7 @@ class MetaCollectorBase:
         of service. 
         """
 
-    def process_batch(self, batch:List[Tuple[str, ] ] ) -> Generator[dict, None, None]:
+    async def process_batch(self, batch:List[Tuple[str, ] ] ) -> Generator[dict, None, None]:
         """
         Process a batch of domains. Receives a list of 
         tuples that represent domains that have yet to be added to 
@@ -128,36 +141,22 @@ class MetaCollectorBase:
 
         raise Exception("Not Implemented")
 
-    async def _run(self):
+    def _thread_run(self, batch:List[dict]):
 
-        batch = self._getBatch();
+        loop = asyncio.new_event_loop();
 
-        async for row_dict in self.process_batch(batch) :
-            
+        asyncio.set_event_loop(loop)
+
+        future = asyncio.ensure_future(self._async_run(batch))
+        
+        # Wait for the result:
+        loop.run_until_complete(future)
+
+    async def _async_run(self, batch:List[dict]):
+
+        async for row_dict in self.process_batch(batch) :            
             if row_dict :
-                # We have a choice to batch up the results and 
-                # do a mass insert or insert each row individually 
-                # as we go.
-
-                # This should be determined by the rate at which we
-                # receive rows. 
-                db = DBConnector();
-
-                #Query the DB with new data table
-                conn = db.conn;
-
-                with conn:
-                    with conn.cursor() as curs:
-
-                        keys = row_dict.keys();
-                        values = [row_dict[key] for key in keys];
-                        
-                        query = curs.mogrify(f"Insert into {self.aoc_table} (%s) values %s", (AsIs(",".join(keys)), tuple(values)))
-                        
-                        curs.execute(query);
-                
-                #Close the db until the next query 
-                db.close()
+                self.queue.put(row_dict)
 
     def run(self):
         """
@@ -174,9 +173,66 @@ class MetaCollectorBase:
             # Run indefinitely
             while True:
                 
-                future = asyncio.ensure_future(self._run())
-    
-                asyncio.get_event_loop().run_until_complete(future)
+                batches = self._getBatches(500);
+
+                threads = [];
+
+                for batch in batches:
+
+                    thread =  threading.Thread(target=self._thread_run, args=(batch,))
+
+                    thread.start();
+
+                    threads.append(thread);
+
+                while True:
+
+                    SHOULD_CONTINUE = False
+
+                    for thread in threads:
+                        if thread.is_alive():
+                            SHOULD_CONTINUE = True
+                            break
+                    
+
+                    # This should be determined by the rate at which we
+                    # receive rows. 
+                    db = DBConnector();
+                    # We have a choice to batch up the results and 
+                    # do a mass insert or insert each row individually 
+                    # as we go.
+
+                    #Query the DB with new data table
+                    conn = db.conn;
+                    
+                    while not self.queue.empty():
+
+                        try:
+                            row_dict = self.queue.get(timeout=2)
+
+
+                            with conn:
+                                with conn.cursor() as curs:
+
+                                    keys = row_dict.keys();
+                                    values = [row_dict[key] for key in keys];
+                                    
+                                    query = curs.mogrify(f"Insert into {self.aoc_table} (%s) values %s", (AsIs(",".join(keys)), tuple(values)))
+                                    
+                                    curs.execute(query);
+
+                        except queue.Empty:
+                            break;
+                    
+                    #Close the db until the next query 
+                    db.close()
+
+                    if not SHOULD_CONTINUE:
+                        break
+
+                for thread in threads:
+                    thread.join();
+
 
                 
 

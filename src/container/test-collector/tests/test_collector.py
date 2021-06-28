@@ -55,7 +55,9 @@ def test_batch():
         aoc_table = "test_table",
         table_schema = ["pingable bool NOT NULL"]):
         
-        def process_batch(self, batch):
+        async def process_batch(self, batch):
+
+            
 
             for id,domain,tld in batch:
 

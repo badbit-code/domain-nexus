@@ -45,6 +45,8 @@ if __name__ == "__main__":
 
     collector = AlexMetaCollector()
 
+    collector.number_of_threads = 4
+
     collector.run()
 
     
