@@ -30,8 +30,6 @@ class RDAP:
 
         self.auth_servers = {key:{"host":val, "PAUSED_FOR_RETRY": False} for key, val in [(name, hosts[0]) for names, hosts in data["services"] for name in names]}
 
-        print(self.auth_servers)
-
     async def get_registration_information(self, domain_name:str, tld:str, session: ClientSession) -> dict:
 
         auth = self.auth_servers.get(tld, None)
@@ -92,9 +90,9 @@ class RDAP:
 
             else:
 
-                print(f"Could not get data for {domain_name} {tld}")
+                # print(f"Could not get RDAP server for {domain_name} {tld}")
 
-                return  {"no_data":True}
+                return  {"no_auth":True}
 
         except:
 

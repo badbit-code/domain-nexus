@@ -2,7 +2,7 @@ from collector_base import MetaCollectorBase
 import aiohttp
 import rdap
 import datetime
-import whois
+import whois_kludge
 
 rdap = rdap.RDAP()
 
@@ -32,11 +32,11 @@ class WhoisMetaCollector(
                 if data is None:
                     continue
 
-                if data.get("no_data", None):
+                if data.get("no_auth", None):
 
                     try:
 
-                        w = whois.whois(domain + "." + tld, flags=whois.NICClient.WHOIS_QUICK)
+                        w = whois_kludge.whois(domain + "." + tld, flags=whois_kludge.NICClient.WHOIS_QUICK)
 
                         if w:
                             if type(w["expiration_date"]) is list:
@@ -55,8 +55,18 @@ class WhoisMetaCollector(
                                 yield {"id":id, "registered":registered or epoch_date, "expires": expired or epoch_date}
 
                     except:
+
+                        import traceback
+
+                        print(w)
+
+                        traceback.print_exc()
+
                         pass
-            
+
+                    yield {"id":id, "registered":epoch_date, "expires": epoch_date}
+
+                if data.get("no_data", None):
 
                     yield {"id":id, "registered":epoch_date, "expires": epoch_date}
 
@@ -65,13 +75,11 @@ class WhoisMetaCollector(
                     yield {"id":id, "registered":data.get("registered", epoch_date), "expires": data.get("expires", epoch_date)}
 
                 
-
-
 if __name__ == "__main__":
 
     collector = WhoisMetaCollector()
 
-    collector.number_of_threads = 16
+    collector.number_of_threads = 2
 
     collector.run()
 

@@ -4,9 +4,7 @@ import aiohttp
 
 class WikiMetaCollector(
     MetaCollectorBase,
-    
     aoc_table = "wiki_data",
-    
     table_schema = [
         "has_wiki boolean not null"
         ]
@@ -43,6 +41,8 @@ class WikiMetaCollector(
 if __name__ == "__main__":
 
     collector = WikiMetaCollector()
+
+    collector.number_of_threads = 4
 
     collector.run()
 
