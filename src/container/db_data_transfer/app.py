@@ -30,6 +30,7 @@ CREATE TABLE  IF NOT EXISTS transfer_table(
     available text,
     ACE boolean,
     search text,
+    is_unique boolean,
     age interval,
     expired timestamptz,
     registered timestamptz,
@@ -44,17 +45,18 @@ conn.commit()
 
 cursor.execute(
 """
-INSERT INTO transfer_table (domain, registered, expired, ACE, search, category, age)
+INSERT INTO transfer_table (domain, registered, expired, ACE, search, category, age, is_unique)
 SELECT
-    (domain.name || '.' || domain.tld) as domain, 
+    (DM.name || '.' || DM.tld) as domain, 
     whois_data.registered as registered, 
     whois_data.expires as expired, 
     CAST( ( alexa_data.alexa_score > 0 OR wiki_data.has_wiki ) AS BOOLEAN ) as ACE,
     'neutral' as search,
     'none' as category,
-    AGE(NOW(), whois_data.registered) as age
-FROM domain, whois_data, alexa_data, wiki_data
-WHERE whois_data.id = domain.id AND alexa_data.id = domain.id AND wiki_data.id = domain.id
+    AGE(NOW(), whois_data.registered) as age,
+    ((SELECT count(*) from domain as D WHERE D.name = DM.name ) = 1) as is_unique
+FROM domain as DM, whois_data, alexa_data, wiki_data
+WHERE whois_data.id = DM.id AND alexa_data.id = DM.id AND wiki_data.id = DM.id
 """
 )
 
@@ -77,8 +79,9 @@ engine = create_engine('mysql+pymysql://mcdanie1_nexus:22*x$KoFRHfy@domain-nex.u
 
 with pd.option_context('display.max_rows', None, 'display.max_columns', None):
     data_frame.info(verbose=True)
-    print(data_frame)
-#data_frame.to_sql('domains',con=engine,index=False,if_exists='append') 
+    #print(data_frame)
+
+data_frame.to_sql('domains',con=engine,index=False,if_exists='replace') 
 
 """
 domain = string (google.com)
