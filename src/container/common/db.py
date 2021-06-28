@@ -19,16 +19,39 @@ class DBConnector:
     """
 
     def __init__(self):
+        retries = 0
+        max_retries = 5
+        self.conn = None
 
-        self.conn = connect(
-            host=os.getenv("POSTGRES_HOST"),
-            dbname=os.getenv("POSTGRES_DB"),
-            user=os.getenv("POSTGRES_USER"),
-            password=os.getenv("POSTGRES_PASSWORD"),
-            port=os.getenv("POSTGRES_PORT", 5432),
-            sslmode=os.getenv("POSTGRES_SSL_MODE", None) or None,
-            sslrootcert=os.getenv("POSTGRES_ROOT_CERT_PATH", None),
-        )
+        while True:
+            try:
+                self.conn = connect(
+                    host=os.getenv("POSTGRES_HOST"),
+                    dbname=os.getenv("POSTGRES_DB"),
+                    user=os.getenv("POSTGRES_USER"),
+                    password=os.getenv("POSTGRES_PASSWORD"),
+                    port=os.getenv("POSTGRES_PORT", 5432),
+                    sslmode=os.getenv("POSTGRES_SSL_MODE", None) or None,
+                    sslrootcert=os.getenv("POSTGRES_ROOT_CERT_PATH", None),
+                )
+                break;
+
+            except Exception as e:
+
+                print(e)
+
+                if retries < max_retries:
+                    
+                    retries += 1
+
+                    import time
+
+                    time.sleep(2* retries)
+                
+                else:
+                    raise Exception("Unable to make connection to DB") 
+                    
+            
 
     def close(self):
         self.conn.close()
