@@ -16,7 +16,8 @@ services:
       dockerfile: ./db_data_transfer/Dockerfile
     env_file:
       - ./.env # configure postgres
-
+    volumes:
+      - /home/vsftp/ftp:/ftp
 
   domain-collector:
     build:
@@ -52,17 +53,6 @@ services:
       dockerfile: ./test-collector/Dockerfile
     env_file:
         - ./.env
-
-  public_api:
-    build:
-      context: ./src/container/public_api
-    env_file:
-      - ./.env # configure postgres
-    ports:
-      - "127.0.0.1:8050:5432"
-    entrypoint: bash -c "/bin/bash"
-    volumes:
-      - ./init-scripts:/docker-entrypoint-initdb.d
 
 volumes:
   database_data: # named volumes can be managed easier using docker-compose
