@@ -3,9 +3,9 @@
 ## TODO 
 - [ ] Create proper readme. Define basic project readme structure
 - [x] Create diagram/design of systems 
-- [ ] Detemine release and dev cycles
-- [ ] Define MVP 
-- [ ] Create proof-of-concept prototype
+- [x] Detemine release and dev cycles
+- [x] Define MVP 
+- [x] Create proof-of-concept prototype
 - [ ] Re-organize files. Define basic project template structure
 
 # Schemas
@@ -66,4 +66,4 @@ added to listing = referral to bid
 
 Anything else should should use relational mappings to keep the core 
 
-# IDEAS
+
